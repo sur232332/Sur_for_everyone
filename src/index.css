@@ -1,0 +1,127 @@
+@import "tailwindcss";
+@custom-variant dark (&:where(.dark, .dark *));
+
+:root {
+  --bg-canvas: #F3EFE6;
+  --bg-surface: #FAF7F0;
+  --bg-elevated: #FFFFFF;
+  --bg-subtle: rgba(24, 21, 18, 0.045);
+  --text-primary: #181512;
+  --text-secondary: #5C5346;
+  --accent: #B87D3B;
+  --accent-strong: #9A6326;
+  --border-hairline: rgba(24, 21, 18, 0.11);
+}
+
+.dark {
+  --bg-canvas: #0B0C10;
+  --bg-surface: #13161E;
+  --bg-elevated: #191D28;
+  --bg-subtle: rgba(245, 242, 235, 0.055);
+  --text-primary: #F5F2EB;
+  --text-secondary: #A1A7B3;
+  --accent: #E5A952;
+  --accent-strong: #F2BE6F;
+  --border-hairline: rgba(245, 242, 235, 0.12);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background-color: var(--bg-canvas);
+  color: var(--text-primary);
+  font-family: "Plus Jakarta Sans", "Noto Sans Armenian", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  transition: background-color 0.35s ease, color 0.25s ease;
+  overflow-x: hidden;
+}
+
+html[lang="hy"] body {
+  font-family: "Noto Sans Armenian", "Plus Jakarta Sans", system-ui, -apple-system, sans-serif;
+  line-height: 1.55;
+}
+
+.font-editorial {
+  font-family: "Cormorant Garamond", "Noto Serif Armenian", "Noto Sans Armenian", Georgia, serif;
+  letter-spacing: -0.02em;
+}
+
+html[lang="hy"] .font-editorial {
+  font-family: "Noto Serif Armenian", "Noto Sans Armenian", Georgia, serif;
+  letter-spacing: -0.01em;
+  line-height: 1.18;
+}
+
+.font-mono-tech {
+  font-family: "JetBrains Mono", "Noto Sans Armenian", monospace;
+  font-variant-numeric: tabular-nums;
+}
+
+.tabular-nums {
+  font-variant-numeric: tabular-nums;
+}
+
+.header-opaque {
+  background-color: var(--bg-surface);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+
+/* Custom Range Sliders */
+input[type="range"].hardware-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 5px;
+  background: rgba(184, 125, 59, 0.24);
+  border-radius: 999px;
+  outline: none;
+}
+
+input[type="range"].hardware-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg-elevated);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+  transition: transform 0.15s ease;
+}
+
+input[type="range"].hardware-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.12);
+}
+
+input[type="range"].hardware-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--accent);
+  cursor: pointer;
+  border: 2px solid var(--bg-elevated);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.28);
+}
+
+/* Subtle custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: rgba(184, 125, 59, 0.35);
+  border-radius: 999px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+}

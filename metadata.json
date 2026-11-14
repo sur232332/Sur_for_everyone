@@ -1,0 +1,6 @@
+{
+  "name": "SILICON PULSE — 3D Hardware & AR Showroom",
+  "description": "Interactive 3D hardware showroom and AR studio for Samsung, Apple, and Huawei flagships with live pricing and bilingual English/Armenian support.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
