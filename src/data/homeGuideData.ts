@@ -998,3 +998,41 @@ export const APPLIANCE_MODELS: ApplianceModelSpec[] = [
     searchQuery: 'Lenovo ThinkPad X1 Carbon Gen 12 32GB OLED price USD',
   },
 ];
+
+export const APPLIANCE_MODEL_PRICES_USD: Record<string, number> = {
+  // Refrigerators
+  'fridge-samsung-rf29bb8600': 2599,
+  'fridge-lg-lmxs28596s': 2499,
+  'fridge-bosch-b36cl80sns': 3299,
+  'fridge-whirlpool-wrf535szhz': 1799,
+  // Gas Stoves
+  'stove-samsung-nx60a6711ss': 1249,
+  'stove-lg-lrgl5825f': 1349,
+  'stove-bosch-hgi8056uc': 2199,
+  'stove-ge-jgb735spss': 999,
+  // Microwaves
+  'mw-panasonic-nn-sn96js': 289,
+  'mw-samsung-mc12j8035ct': 429,
+  'mw-lg-lmcx23626s': 319,
+  'mw-bosch-hmb50152uc': 649,
+  // Washing Machines
+  'washer-lg-wm4000hwa': 999,
+  'washer-samsung-wf45b6300aw': 949,
+  'washer-bosch-waw285h1uc': 1399,
+  'washer-electrolux-elwf7637aw': 1099,
+  // Dryers
+  'dryer-lg-dlex4000w': 999,
+  'dryer-samsung-dve45b6300w': 949,
+  'dryer-bosch-wtg865h4uc': 1449,
+  'dryer-electrolux-eldf7637aw': 1099,
+  // Laptops
+  'laptop-macbook-pro-16-m4max': 3499,
+  'laptop-samsung-galaxy-book4-ultra': 2399,
+  'laptop-asus-zenbook-duo-ux8406': 1999,
+  'laptop-lenovo-thinkpad-x1-carbon-g12': 2149,
+};
+
+export function getApplianceBasePriceUsd(modelId: string): number {
+  return APPLIANCE_MODEL_PRICES_USD[modelId] ?? 1199;
+}
+

@@ -159,58 +159,88 @@ function createPhoneScreenTexture(
     ctx.fillStyle = glow;
     ctx.fillRect(0, 180, 512, 560);
 
-    // Geometric orbit rings
-    ctx.strokeStyle = accentHex;
-    ctx.lineWidth = 3;
+    // Rich silk-titanium fluid wallpaper waves
+    const waveGrad = ctx.createLinearGradient(40, 220, 472, 760);
+    waveGrad.addColorStop(0, accentHex);
+    waveGrad.addColorStop(0.5, style === 'iphone' ? '#f59e0b' : style === 'pura' ? '#10b981' : '#38bdf8');
+    waveGrad.addColorStop(1, 'rgba(255,255,255,0.08)');
+    ctx.fillStyle = waveGrad;
     ctx.beginPath();
-    ctx.arc(256, 460, 142, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.ellipse(256, 470, 175, 115, -0.35, 0, Math.PI * 2);
+    ctx.fill();
 
-    ctx.strokeStyle = 'rgba(255,255,255,0.18)';
-    ctx.lineWidth = 1.5;
+    const innerCore = ctx.createRadialGradient(256, 470, 15, 256, 470, 155);
+    innerCore.addColorStop(0, 'rgba(10, 12, 18, 0.92)');
+    innerCore.addColorStop(1, 'rgba(10, 12, 18, 0.15)');
+    ctx.fillStyle = innerCore;
     ctx.beginPath();
-    ctx.arc(256, 460, 192, 0, Math.PI * 2);
-    ctx.stroke();
+    ctx.arc(256, 470, 140, 0, Math.PI * 2);
+    ctx.fill();
 
-    // Status bar clock & battery icons
-    ctx.fillStyle = 'rgba(255,255,255,0.85)';
-    ctx.font = 'bold 20px sans-serif';
+    // Status bar clock & battery/5G icons
+    ctx.fillStyle = 'rgba(255,255,255,0.92)';
+    ctx.font = 'bold 21px sans-serif';
     ctx.textAlign = 'left';
     ctx.fillText('09:41', 42, 52);
     ctx.textAlign = 'right';
     ctx.fillText('5G · 100%', 470, 52);
 
-    ctx.fillStyle = '#FFFFFF';
-    ctx.font = 'bold 46px sans-serif';
+    // Large Lock/Home Clock & Model Header
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.font = '600 20px sans-serif';
     ctx.textAlign = 'center';
-    ctx.fillText(spec.brand.toUpperCase(), 256, 178);
+    ctx.fillText(spec.brand.toUpperCase() + ' FLAGSHIP', 256, 125);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 88px sans-serif';
+    ctx.fillText('09:41', 256, 212);
 
     ctx.fillStyle = accentHex;
-    ctx.font = '600 24px monospace';
-    ctx.fillText(spec.screenBadge, 256, 224);
+    ctx.font = 'bold 22px monospace';
+    ctx.fillText(spec.name.replace('Samsung ', '').replace('Apple ', '').replace('Huawei ', ''), 256, 252);
 
-    ctx.fillStyle = 'rgba(255,255,255,0.88)';
-    ctx.font = '22px monospace';
-    ctx.fillText(`${spec.dimensionsMm.height} × ${spec.dimensionsMm.width} mm`, 256, 452);
-    ctx.fillText(`${spec.weightGrams} g · ${spec.benchmarks.peakNits} NITS`, 256, 488);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.09)';
+    // Glassmorphic Spec Widgets Row
+    ctx.fillStyle = 'rgba(255,255,255,0.12)';
     ctx.beginPath();
-    ctx.roundRect(56, 820, 400, 110, 20);
+    ctx.roundRect(42, 640, 204, 110, 24);
+    ctx.roundRect(266, 640, 204, 110, 24);
     ctx.fill();
+
     ctx.fillStyle = accentHex;
-    ctx.font = 'bold 20px monospace';
-    ctx.fillText(
-      `SINGLE ${spec.benchmarks.singleCore} · MULTI ${spec.benchmarks.multiCore}`,
-      256,
-      868
-    );
-    ctx.fillStyle = '#E5E7EB';
-    ctx.font = '18px monospace';
-    ctx.fillText('120Hz LTPO · PBR 3D ENGINE', 256, 904);
+    ctx.font = 'bold 18px monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('DISPLAY', 64, 678);
+    ctx.fillText('SILICON', 288, 678);
+
+    ctx.fillStyle = '#FFFFFF';
+    ctx.font = 'bold 20px sans-serif';
+    ctx.fillText(spec.screenBadge.slice(0, 14), 64, 712);
+    ctx.fillText(`${spec.benchmarks.peakNits} nits`, 64, 736);
+    ctx.fillText(`1C: ${spec.benchmarks.singleCore}`, 288, 712);
+    ctx.fillText(`MC: ${spec.benchmarks.multiCore}`, 288, 736);
+
+    // Bottom Frosted Dock with 4 App Icons
+    ctx.fillStyle = 'rgba(255,255,255,0.14)';
+    ctx.beginPath();
+    ctx.roundRect(42, 845, 428, 108, 32);
+    ctx.fill();
+
+    const dockColors = ['#10b981', '#3b82f6', accentHex, '#f43f5e'];
+    dockColors.forEach((col, idx) => {
+      const ix = 72 + idx * 98;
+      ctx.fillStyle = col;
+      ctx.beginPath();
+      ctx.roundRect(ix, 863, 72, 72, 18);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255,255,255,0.88)';
+      ctx.beginPath();
+      ctx.arc(ix + 36, 899, 14, 0, Math.PI * 2);
+      ctx.fill();
+    });
 
     // Home indicator bar
-    ctx.fillStyle = 'rgba(255,255,255,0.65)';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
     ctx.beginPath();
     ctx.roundRect(176, 988, 160, 10, 5);
     ctx.fill();

@@ -1,4 +1,5 @@
 import { BrandId, DeviceSpec, ExplodedLayerId, ExplodedLayerInfo } from '../types/hardware';
+import { APPLIANCE_MODELS, getApplianceBasePriceUsd } from './homeGuideData';
 
 export interface BrandMeta {
   id: BrandId;
@@ -987,10 +988,557 @@ export const DEVICES: DeviceSpec[] = [
     screenBadge: 'MATEBOOK X PRO · 980G',
     officialUrl: 'https://consumer.huawei.com/en/laptops/matebook-x-pro-2024/',
   },
+  // ===========================
+  // ADDITIONAL TOP FLAGSHIPS (2024 / 2025)
+  // ===========================
+  {
+    id: 'galaxy-s25-ultra',
+    brand: 'samsung',
+    category: 'phone',
+    geometryType: 'phone-s24',
+    name: 'Samsung Galaxy S25 Ultra',
+    tagline: {
+      en: '6.9" Dynamic AMOLED 2X · Snapdragon 8 Elite (3nm) · 200MP ProVisual',
+      hy: '6.9" Dynamic AMOLED 2X · Snapdragon 8 Elite (3նմ) · 200ՄՊ ProVisual',
+    },
+    summary: {
+      en: 'Curved-edge Grade 5 Titanium flagship powered by the custom 3nm Snapdragon 8 Elite for Galaxy, 50MP ultrawide + 200MP main sensor, and Gorilla Armor 2.',
+      hy: '5-րդ դասի տիտանե կորացված եզրերով ֆլագման՝ 3նմ Snapdragon 8 Elite պրոցեսորով, 200ՄՊ + 50ՄՊ տեսախցիկներով և Gorilla Armor 2 ապակիով։',
+    },
+    basePriceUsd: 1349,
+    releaseYear: '2025',
+    dimensionsMm: { width: 77.6, height: 162.8, depth: 8.2 },
+    weightGrams: 218,
+    numericMetrics: { screenInches: 6.9, batteryScore: 5000, cameraMp: 200 },
+    specs: {
+      processor: {
+        en: 'Snapdragon 8 Elite for Galaxy (3nm, 4.47 GHz Oryon)',
+        hy: 'Snapdragon 8 Elite for Galaxy (3նմ, 4.47 ԳՀց Oryon)',
+      },
+      display: {
+        en: '6.9" QHD+ Dynamic LTPO AMOLED 2X · 1–120Hz · 2800 nits',
+        hy: '6.9" QHD+ Dynamic LTPO AMOLED 2X · 1–120Հց · 2800 նիտ',
+      },
+      graphics: {
+        en: 'Adreno 830 GPU · Hardware Ray Tracing · Vulkan 1.3',
+        hy: 'Adreno 830 GPU · Ապարատային Ray Tracing',
+      },
+      camera: {
+        en: '200MP Wide + 50MP 5x Periscope + 50MP Ultra-Wide + 10MP 3x',
+        hy: '200ՄՊ Հիմնական + 50ՄՊ 5x Պերիսկոպ + 50ՄՊ Գերլայնանկյուն',
+      },
+      memory: {
+        en: '16GB LPDDR5X · Up to 1TB UFS 4.0',
+        hy: '16ԳԲ LPDDR5X · Մինչև 1ՏԲ UFS 4.0',
+      },
+      battery: {
+        en: '5000 mAh · 45W Super Fast Charging 2.0 · Qi2 Ready',
+        hy: '5000 մԱժ · 45Վտ գերարագ լիցքավորում · Qi2',
+      },
+      chassis: {
+        en: 'Grade 5 Titanium Frame · Corning Gorilla Armor 2 · IP68',
+        hy: '5-րդ դասի տիտանե շրջանակ · Gorilla Armor 2 · IP68',
+      },
+      connectivity: {
+        en: '5G mmWave · Wi-Fi 7 · Bluetooth 5.4 · UWB · S-Pen',
+        hy: '5G · Wi-Fi 7 · Bluetooth 5.4 · UWB · S-Pen',
+      },
+    },
+    benchmarks: { singleCore: 3180, multiCore: 10120, gpuScore: 20800, peakNits: 2800 },
+    finishes: [
+      { id: 'titanium-silverblue', name: { en: 'Titanium Silverblue', hy: 'Տիտանե Արծաթակապույտ' }, hex: '#8FA2B2', accentHex: '#38BDF8', roughness: 0.28, metalness: 0.85 },
+      { id: 'titanium-jetblack', name: { en: 'Titanium Jetblack', hy: 'Տիտանե Սև' }, hex: '#1E2024', accentHex: '#60A5FA', roughness: 0.32, metalness: 0.82 },
+      { id: 'titanium-whitesilver', name: { en: 'Titanium Whitesilver', hy: 'Տիտանե Սպիտակ' }, hex: '#EAECEF', accentHex: '#2563EB', roughness: 0.26, metalness: 0.78 },
+    ],
+    storageOptions: [
+      { id: '256gb', label: '256 GB', priceDeltaUsd: 0 },
+      { id: '512gb', label: '512 GB', priceDeltaUsd: 120 },
+      { id: '1tb', label: '1 TB', priceDeltaUsd: 320 },
+    ],
+    visualDetails3D: [
+      {
+        id: 's25-periscope',
+        title: { en: '200MP + 50MP Ultra-Wide Optical Array', hy: '200ՄՊ + 50ՄՊ Օպտիկական Մոդուլ' },
+        description: { en: 'Floating titanium lens rings with 5x optical periscope zoom.', hy: 'Տիտանե օբյեկտիվների օղակներ՝ 5x օպտիկական պերիսկոպով։' },
+        cameraPreset: 'back',
+        explodeTarget: 0,
+        layerHighlight: 'camera_module',
+      },
+      {
+        id: 's25-xray',
+        title: { en: 'X-Ray: 3nm Snapdragon 8 Elite & 40% Larger Vapor Chamber', hy: 'X-Ray՝ 3նմ Snapdragon 8 Elite և Հովացման Խցիկ' },
+        description: { en: 'Exploded view of the 3nm Oryon processor and copper thermal spreader.', hy: '3նմ Oryon պրոցեսորը և մեծացված պղնձե հովացման համակարգը։' },
+        cameraPreset: 'iso',
+        explodeTarget: 80,
+        layerHighlight: 'logic_board',
+      },
+    ],
+    screenBadge: 'GALAXY S25 ULTRA · 3NM',
+    officialUrl: 'https://www.samsung.com/us/smartphones/galaxy-s25-ultra/',
+  },
+  {
+    id: 'galaxy-tab-s10-ultra',
+    brand: 'samsung',
+    category: 'foldable',
+    geometryType: 'foldable-book',
+    name: 'Samsung Galaxy Tab S10 Ultra (14.6" OLED)',
+    tagline: {
+      en: '14.6" Dynamic AMOLED 2X · 5.4mm Armor Aluminum · S-Pen Pro',
+      hy: '14.6" Dynamic AMOLED 2X · 5.4մմ Armor Aluminum · S-Pen Pro',
+    },
+    summary: {
+      en: 'Ultra-expansive 14.6-inch anti-reflective Dynamic AMOLED 2X canvas engineered into a razor-thin 5.4mm IP68 Armor Aluminum body.',
+      hy: 'Գերբարակ (5.4 մմ) IP68 պաշտպանությամբ Armor Aluminum կորպուս և 14.6" Dynamic AMOLED 2X հակափայլ էկրան։',
+    },
+    basePriceUsd: 1199,
+    releaseYear: '2025',
+    dimensionsMm: { width: 208.6, height: 326.4, depth: 5.4 },
+    weightGrams: 718,
+    numericMetrics: { screenInches: 14.6, batteryScore: 11200, cameraMp: 13 },
+    specs: {
+      processor: {
+        en: 'Dimensity 9300+ Flagship Octa-Core (4nm, 3.4 GHz)',
+        hy: 'Dimensity 9300+ Ֆլագմանային 8-միջուկանի (4նմ, 3.4 ԳՀց)',
+      },
+      display: {
+        en: '14.6" Dynamic AMOLED 2X (2960×1848) · 120Hz · Anti-Reflective',
+        hy: '14.6" Dynamic AMOLED 2X (2960×1848) · 120Հց · Հակափայլ',
+      },
+      graphics: {
+        en: 'Immortalis-G720 MC12 Ray-Tracing GPU',
+        hy: 'Immortalis-G720 MC12 GPU',
+      },
+      camera: {
+        en: 'Dual 13MP + 8MP Rear · Dual 12MP Ultra-Wide 4K Front',
+        hy: 'Կրկնակի 13ՄՊ + 8ՄՊ Հետևի · Կրկնակի 12ՄՊ Առջևի',
+      },
+      memory: {
+        en: '16GB RAM · Up to 1TB Storage + microSD',
+        hy: '16ԳԲ RAM · Մինչև 1ՏԲ Հիշողություն',
+      },
+      battery: {
+        en: '11,200 mAh · 45W Fast Charging',
+        hy: '11,200 մԱժ · 45Վտ արագ լիցքավորում',
+      },
+      chassis: {
+        en: '5.4mm Enhanced Armor Aluminum · IP68 Water & Dust Resistant',
+        hy: '5.4 մմ Armor Aluminum · IP68 ջրակայուն',
+      },
+      connectivity: {
+        en: 'Wi-Fi 7 · 5G Sub-6 · Magnetic S-Pen Included',
+        hy: 'Wi-Fi 7 · 5G · Մագնիսական S-Pen',
+      },
+    },
+    benchmarks: { singleCore: 2290, multiCore: 7650, gpuScore: 16400, peakNits: 1750 },
+    finishes: [
+      { id: 'moonstone-gray', name: { en: 'Moonstone Gray', hy: 'Լուսնաքարային Մոխրագույն' }, hex: '#4B525C', accentHex: '#60A5FA', roughness: 0.32, metalness: 0.8 },
+      { id: 'platinum-silver', name: { en: 'Platinum Silver', hy: 'Պլատինե Արծաթագույն' }, hex: '#C7CCD2', accentHex: '#2563EB', roughness: 0.28, metalness: 0.82 },
+    ],
+    storageOptions: [
+      { id: '256gb', label: '256 GB · 12GB', priceDeltaUsd: 0 },
+      { id: '512gb', label: '512 GB · 12GB', priceDeltaUsd: 120 },
+      { id: '1tb', label: '1 TB · 16GB', priceDeltaUsd: 320 },
+    ],
+    visualDetails3D: [
+      {
+        id: 'tab-s10-display',
+        title: { en: '14.6" Anti-Reflective AMOLED Studio Canvas', hy: '14.6" Հակափայլ AMOLED Էկրան' },
+        description: { en: 'Ultra-wide creator display with 120Hz adaptive refresh.', hy: '120Հց ադապտիվ թարմացմամբ ստեղծագործական էկրան։' },
+        cameraPreset: 'front',
+        explodeTarget: 0,
+        foldTarget: 180,
+        layerHighlight: 'display',
+      },
+    ],
+    hasFold: true,
+    screenBadge: 'TAB S10 ULTRA · 14.6"',
+    officialUrl: 'https://www.samsung.com/us/tablets/galaxy-tab-s10/',
+  },
+  {
+    id: 'iphone-16-pro',
+    brand: 'apple',
+    category: 'phone',
+    geometryType: 'phone-iphone',
+    name: 'Apple iPhone 16 Pro',
+    tagline: {
+      en: '6.3" Super Retina XDR · A18 Pro (3nm) · 5x Tetraprism Zoom',
+      hy: '6.3" Super Retina XDR · A18 Pro (3նմ) · 5x Tetraprism Զում',
+    },
+    summary: {
+      en: 'Compact Grade 5 Titanium Pro flagship packing the full 5x Tetraprism telephoto camera, Camera Control sapphire button, and 4K120 Dolby Vision.',
+      hy: 'Կոմպակտ 5-րդ դասի տիտանե ֆլագման՝ լիարժեք 5x Tetraprism հեռաօբյեկտիվով, Camera Control սապֆիրե կոճակով և 4K120 Dolby Vision-ով։',
+    },
+    basePriceUsd: 999,
+    releaseYear: '2024',
+    dimensionsMm: { width: 71.5, height: 149.6, depth: 8.25 },
+    weightGrams: 199,
+    numericMetrics: { screenInches: 6.3, batteryScore: 3582, cameraMp: 48 },
+    specs: {
+      processor: {
+        en: 'Apple A18 Pro (2nd-Gen 3nm · 6-Core CPU · 16-Core Neural Engine)',
+        hy: 'Apple A18 Pro (2-րդ սերնդի 3նմ · 6-միջուկանի CPU)',
+      },
+      display: {
+        en: '6.3" Super Retina XDR OLED · ProMotion 1–120Hz · 2000 nits',
+        hy: '6.3" Super Retina XDR OLED · ProMotion 1–120Հց · 2000 նիտ',
+      },
+      graphics: {
+        en: '6-Core Apple GPU with Hardware Ray Tracing',
+        hy: '6-միջուկանի Apple GPU՝ Ray Tracing-ով',
+      },
+      camera: {
+        en: '48MP Fusion + 48MP Ultra Wide + 12MP 5x Tetraprism Telephoto',
+        hy: '48ՄՊ Fusion + 48ՄՊ Գերլայնանկյուն + 12ՄՊ 5x Tetraprism',
+      },
+      memory: {
+        en: '8GB LPDDR5X Unified Memory · Up to 1TB NVMe',
+        hy: '8ԳԲ LPDDR5X Միասնական Հիշողություն · Մինչև 1ՏԲ NVMe',
+      },
+      battery: {
+        en: 'Up to 27h Video Playback · 25W MagSafe Wireless',
+        hy: 'Մինչև 27 ժամ վիդեո · 25Վտ MagSafe անլար լիցքավորում',
+      },
+      chassis: {
+        en: 'Grade 5 Micro-Blasted Titanium · Latest Ceramic Shield · IP68',
+        hy: '5-րդ դասի տիտան · Ceramic Shield · IP68',
+      },
+      connectivity: {
+        en: '5G · Wi-Fi 7 · Thread · 2nd-Gen Ultra Wideband · USB-C 10Gb/s',
+        hy: '5G · Wi-Fi 7 · Thread · UWB · USB-C 10Գբ/վ',
+      },
+    },
+    benchmarks: { singleCore: 3400, multiCore: 8390, gpuScore: 18600, peakNits: 2000 },
+    finishes: [
+      { id: 'desert-titanium', name: { en: 'Desert Titanium', hy: 'Անապատային Տիտան' }, hex: '#C4AF9A', accentHex: '#E5A952', roughness: 0.3, metalness: 0.82 },
+      { id: 'natural-titanium', name: { en: 'Natural Titanium', hy: 'Բնական Տիտան' }, hex: '#A5A29B', accentHex: '#D97706', roughness: 0.3, metalness: 0.85 },
+      { id: 'black-titanium', name: { en: 'Black Titanium', hy: 'Սև Տիտան' }, hex: '#232426', accentHex: '#E5A952', roughness: 0.35, metalness: 0.82 },
+    ],
+    storageOptions: [
+      { id: '128gb', label: '128 GB', priceDeltaUsd: 0 },
+      { id: '256gb', label: '256 GB', priceDeltaUsd: 100 },
+      { id: '512gb', label: '512 GB', priceDeltaUsd: 300 },
+      { id: '1tb', label: '1 TB', priceDeltaUsd: 500 },
+    ],
+    visualDetails3D: [
+      {
+        id: 'ip16pro-tetraprism',
+        title: { en: '5x Tetraprism Optics in 6.3" Pro Form', hy: '5x Tetraprism Օպտիկա 6.3" Կորպուսում' },
+        description: { en: 'Four-reflection glass prism folded inside the compact Pro chassis.', hy: 'Քառակի անդրադարձմամբ պրիզմա կոմպակտ տիտանե կորպուսում։' },
+        cameraPreset: 'back',
+        explodeTarget: 0,
+        layerHighlight: 'camera_module',
+      },
+    ],
+    screenBadge: 'IPHONE 16 PRO · 6.3"',
+    officialUrl: 'https://www.apple.com/iphone-16-pro/',
+  },
+  {
+    id: 'macbook-air-15-m3',
+    brand: 'apple',
+    category: 'laptop',
+    geometryType: 'laptop-macbook',
+    name: 'Apple MacBook Air 15" (M3)',
+    tagline: {
+      en: '15.3" Liquid Retina · 11.5mm Fanless Unibody · 18-Hour Battery',
+      hy: '15.3" Liquid Retina · 11.5մմ Անաղմուկ Ալյումինե Կորպուս · 18Ժ Մարտկոց',
+    },
+    summary: {
+      en: 'Impossibly thin 11.5mm fanless recycled aluminum unibody housing a 15.3-inch Liquid Retina display, 3nm M3 chip, and 6-speaker Spatial Audio.',
+      hy: 'Ընդամենը 11.5 մմ հաստությամբ անաղմուկ ալյումինե կորպուս՝ 15.3" Liquid Retina էկրանով, 3նմ M3 չիպով և 6 բարձրախոսով։',
+    },
+    basePriceUsd: 1299,
+    releaseYear: '2024',
+    dimensionsMm: { width: 340.4, height: 237.6, depth: 11.5 },
+    weightGrams: 1510,
+    numericMetrics: { screenInches: 15.3, batteryScore: 6650, cameraMp: 2 },
+    specs: {
+      processor: {
+        en: 'Apple M3 (3nm · 8-Core CPU · 16-Core Neural Engine)',
+        hy: 'Apple M3 (3նմ · 8-միջուկանի CPU · 16-միջուկանի Neural Engine)',
+      },
+      display: {
+        en: '15.3" Liquid Retina (2880×1864) · 500 nits · P3 Wide Color',
+        hy: '15.3" Liquid Retina (2880×1864) · 500 նիտ · P3 գունային գամմա',
+      },
+      graphics: {
+        en: '10-Core Apple GPU · Hardware Mesh Shading & Ray Tracing',
+        hy: '10-միջուկանի Apple GPU · Hardware Ray Tracing',
+      },
+      camera: {
+        en: '1080p FaceTime HD · 6-Speaker Sound System with Force-Cancelling Woofers',
+        hy: '1080p FaceTime HD · 6-բարձրախոս Spatial Audio համակարգ',
+      },
+      memory: {
+        en: '16GB Unified Memory · Up to 2TB SSD',
+        hy: '16ԳԲ Միասնական Հիշողություն · Մինչև 2ՏԲ SSD',
+      },
+      battery: {
+        en: '66.5 Wh · Up to 18 Hours · MagSafe 3 Fast Charge',
+        hy: '66.5 Վտժ · Մինչև 18 ժամ աշխատանք · MagSafe 3',
+      },
+      chassis: {
+        en: '100% Recycled CNC Aluminum Unibody · Silent Fanless Design',
+        hy: 'Ամբողջական CNC ալյումինե անաղմուկ կորպուս (11.5 մմ)',
+      },
+      connectivity: {
+        en: '2x Thunderbolt / USB 4 · MagSafe 3 · Wi-Fi 6E · Dual External Display Support',
+        hy: '2x Thunderbolt / USB 4 · MagSafe 3 · Wi-Fi 6E',
+      },
+    },
+    benchmarks: { singleCore: 3120, multiCore: 12150, gpuScore: 24800, peakNits: 500 },
+    finishes: [
+      { id: 'midnight', name: { en: 'Midnight', hy: 'Կեսգիշերային Կապույտ' }, hex: '#1E2430', accentHex: '#60A5FA', roughness: 0.3, metalness: 0.8 },
+      { id: 'starlight', name: { en: 'Starlight', hy: 'Աստղային Ոսկեգույն' }, hex: '#E3DAC9', accentHex: '#E5A952', roughness: 0.28, metalness: 0.78 },
+      { id: 'space-gray', name: { en: 'Space Gray', hy: 'Տիեզերական Մոխրագույն' }, hex: '#5D5E61', accentHex: '#E5A952', roughness: 0.3, metalness: 0.82 },
+    ],
+    storageOptions: [
+      { id: '256gb-16g', label: '256 GB · 16GB', priceDeltaUsd: 0 },
+      { id: '512gb-16g', label: '512 GB · 16GB', priceDeltaUsd: 200 },
+      { id: '1tb-24g', label: '1 TB · 24GB', priceDeltaUsd: 600 },
+    ],
+    visualDetails3D: [
+      {
+        id: 'mba-blade',
+        title: { en: '11.5mm Razor-Thin Fanless Unibody', hy: '11.5 մմ Գերբարակ Անաղմուկ Պրոֆիլ' },
+        description: { en: 'Uniform 11.5mm aluminum enclosure with zero moving fan parts.', hy: '11.5 մմ հաստությամբ ամբողջական ալյումինե կորպուս։' },
+        cameraPreset: 'edge',
+        explodeTarget: 0,
+        hingeTarget: 112,
+        layerHighlight: 'back_glass',
+      },
+    ],
+    hasHinge: true,
+    screenBadge: 'MACBOOK AIR 15" · M3',
+    officialUrl: 'https://www.apple.com/macbook-air/',
+  },
+  {
+    id: 'huawei-mate-70-pro-plus',
+    brand: 'huawei',
+    category: 'phone',
+    geometryType: 'phone-pura',
+    name: 'Huawei Mate 70 Pro+ (Gold-Thread Titanium)',
+    tagline: {
+      en: '6.9" Quad-Curved LTPO OLED · XMAGE Red Maple Optics · Tiantong Satellite',
+      hy: '6.9" Քառակոր LTPO OLED · XMAGE Օպտիկա · Տիտանե Շրջանակ',
+    },
+    summary: {
+      en: 'High-gloss basalt titanium architecture with gold-thread brocade back cover, 1.5M multi-spectral Red Maple camera sensor, and 2nd-gen Kunlun Glass.',
+      hy: 'Բազալտե տիտանից կորպուս՝ ոսկեթել հյուսվածքով, բազմասպեկտրալ XMAGE Red Maple տեսախցիկով և 2-րդ սերնդի Kunlun Glass-ով։',
+    },
+    basePriceUsd: 1399,
+    releaseYear: '2025',
+    dimensionsMm: { width: 79.5, height: 164.6, depth: 8.25 },
+    weightGrams: 226,
+    numericMetrics: { screenInches: 6.9, batteryScore: 5700, cameraMp: 50 },
+    specs: {
+      processor: {
+        en: 'Kirin 9020 / 9100 Flagship SoC · Maleoon 920 GPU',
+        hy: 'Kirin 9020 / 9100 Ֆլագմանային Պրոցեսոր · Maleoon 920 GPU',
+      },
+      display: {
+        en: '6.9" LTPO OLED (2832×1316) · 1–120Hz · 2500 nits · Kunlun Glass 2',
+        hy: '6.9" LTPO OLED · 1–120Հց · 2500 նիտ · Kunlun Glass 2',
+      },
+      graphics: {
+        en: 'Maleoon 920 GPU · HarmonyOS NEXT Native Engine',
+        hy: 'Maleoon 920 GPU · HarmonyOS NEXT շարժիչ',
+      },
+      camera: {
+        en: '50MP Variable Aperture (f/1.4–f/4.0) + 48MP 4x Tele-Macro + 40MP Ultra-Wide',
+        hy: '50ՄՊ Փոփոխական Դիաֆրագմա + 48ՄՊ 4x Հեռա-Մակրո + 40ՄՊ Լայնանկյուն',
+      },
+      memory: {
+        en: '16GB RAM · Up to 1TB Flash Storage',
+        hy: '16ԳԲ RAM · Մինչև 1ՏԲ Հիշողություն',
+      },
+      battery: {
+        en: '5700 mAh High-Silicon Anode · 100W SuperCharge · 80W Wireless',
+        hy: '5700 մԱժ · 100Վտ SuperCharge · 80Վտ անլար լիցքավորում',
+      },
+      chassis: {
+        en: 'High-Gloss Basalt Titanium Frame · Gold-Thread Fiber Back · IP69',
+        hy: 'Բազալտե տիտանե շրջանակ · Ոսկեթել մանրաթել · IP69 պաշտպանություն',
+      },
+      connectivity: {
+        en: 'Dual Satellite Communications · Wi-Fi 7 · NearLink · USB-C 3.1 Gen1',
+        hy: 'Կրկնակի արբանյակային կապ · Wi-Fi 7 · NearLink',
+      },
+    },
+    benchmarks: { singleCore: 2150, multiCore: 6980, gpuScore: 15800, peakNits: 2500 },
+    finishes: [
+      { id: 'gold-silver-brocade', name: { en: 'Gold & Silver Brocade', hy: 'Ոսկեթել Դիպակ' }, hex: '#D8CEBE', accentHex: '#E5A952', roughness: 0.25, metalness: 0.76 },
+      { id: 'ink-black-titanium', name: { en: 'Obsidian Black Titanium', hy: 'Օբսիդիան Սև Տիտան' }, hex: '#1C1D21', accentHex: '#EF4444', roughness: 0.28, metalness: 0.84 },
+    ],
+    storageOptions: [
+      { id: '512gb', label: '512 GB · 16GB', priceDeltaUsd: 0 },
+      { id: '1tb', label: '1 TB · 16GB', priceDeltaUsd: 220 },
+    ],
+    visualDetails3D: [
+      {
+        id: 'mate70-star-ring',
+        title: { en: 'Star-Ring XMAGE Multi-Spectral Array', hy: 'Star-Ring XMAGE Տեսախցիկների Օղակ' },
+        description: { en: '1.5M spectral channels capturing true-to-life color accuracy.', hy: '1.5 միլիոն սպեկտրալ ալիքներ՝ իրական գույների վերարտադրման համար։' },
+        cameraPreset: 'back',
+        explodeTarget: 0,
+        lensExtend: true,
+        layerHighlight: 'camera_module',
+      },
+    ],
+    hasRetractableLens: true,
+    screenBadge: 'MATE 70 PRO+ · TITANIUM',
+    officialUrl: 'https://consumer.huawei.com/en/phones/',
+  },
+  {
+    id: 'huawei-matepad-pro-13',
+    brand: 'huawei',
+    category: 'foldable',
+    geometryType: 'foldable-book',
+    name: 'Huawei MatePad Pro 13.2" (Tandem OLED)',
+    tagline: {
+      en: '13.2" Flexible OLED PaperMatte · 5.5mm · 580g · NearLink M-Pencil',
+      hy: '13.2" Ճկուն OLED PaperMatte · 5.5մմ · 580 գ · NearLink M-Pencil',
+    },
+    summary: {
+      en: 'World’s thinnest 5.5mm 13.2-inch tablet with a 94% screen-to-body Flexible Tandem OLED PaperMatte display and 10,100 mAh battery.',
+      hy: 'Աշխարհի ամենաբարակ 5.5 մմ պլանշետներից՝ 13.2" Flexible OLED PaperMatte էկրանով (94% օգտակար մակերես) և 580 գ քաշով։',
+    },
+    basePriceUsd: 1099,
+    releaseYear: '2024',
+    dimensionsMm: { width: 196.1, height: 289.1, depth: 5.5 },
+    weightGrams: 580,
+    numericMetrics: { screenInches: 13.2, batteryScore: 10100, cameraMp: 13 },
+    specs: {
+      processor: {
+        en: 'Kirin 9000W Octa-Core · Stainless VC Cooling',
+        hy: 'Kirin 9000W 8-միջուկանի պրոցեսոր · VC հովացում',
+      },
+      display: {
+        en: '13.2" Flexible OLED (2880×1920) · 144Hz · 1000 nits · 3:2',
+        hy: '13.2" Ճկուն OLED (2880×1920) · 144Հց · 1000 նիտ · 3:2',
+      },
+      graphics: {
+        en: 'Maleoon 910 GPU · GoPaint Pro Engine',
+        hy: 'Maleoon 910 GPU · GoPaint Pro գրաֆիկական շարժիչ',
+      },
+      camera: {
+        en: '13MP + 8MP Rear · 16MP Front + ToF 3D Depth Sensor',
+        hy: '13ՄՊ + 8ՄՊ Հետևի · 16ՄՊ Առջևի + 3D ToF սենսոր',
+      },
+      memory: {
+        en: '12GB / 16GB RAM · 512GB / 1TB ROM',
+        hy: '12ԳԲ / 16ԳԲ RAM · 512ԳԲ / 1ՏԲ Հիշողություն',
+      },
+      battery: {
+        en: '10,100 mAh Dual-Series Cell · 88W SuperCharge',
+        hy: '10,100 մԱժ · 88Վտ SuperCharge արագ լիցքավորում',
+      },
+      chassis: {
+        en: '5.5mm High-Strength Fiberglass & Magnesium Frame · 580g',
+        hy: '5.5 մմ ապակեթելային և մագնեզիումային շրջանակ · 580 գ',
+      },
+      connectivity: {
+        en: 'NearLink Stylus & Keyboard · Wi-Fi 6 · Huawei Sound 6-Speaker',
+        hy: 'NearLink գրիչ և ստեղնաշար · 6-բարձրախոս Huawei Sound',
+      },
+    },
+    benchmarks: { singleCore: 1920, multiCore: 6150, gpuScore: 13400, peakNits: 1000 },
+    finishes: [
+      { id: 'green-brocade', name: { en: ' Puyang Green', hy: 'Զմրուխտե Կանաչ' }, hex: '#3B5E52', accentHex: '#34D399', roughness: 0.3, metalness: 0.65 },
+      { id: 'golden-black', name: { en: 'Golden Black', hy: 'Սև Ոսկեգույն' }, hex: '#1F2024', accentHex: '#E5A952', roughness: 0.32, metalness: 0.72 },
+    ],
+    storageOptions: [
+      { id: '256gb', label: '256 GB · 12GB', priceDeltaUsd: 0 },
+      { id: '512gb', label: '512 GB · 12GB', priceDeltaUsd: 150 },
+    ],
+    visualDetails3D: [
+      {
+        id: 'matepad-oled',
+        title: { en: '13.2" 144Hz Flexible OLED Canvas', hy: '13.2" 144Հց Ճկուն OLED Էկրան' },
+        description: { en: '3.4mm ultra-slim bezels with anti-glare nano-etched glass.', hy: '3.4 մմ գերբարակ շրջանակներ և հակափայլ նանո-ապակի։' },
+        cameraPreset: 'front',
+        explodeTarget: 0,
+        foldTarget: 180,
+        layerHighlight: 'display',
+      },
+    ],
+    hasFold: true,
+    screenBadge: 'MATEPAD PRO 13.2"',
+    officialUrl: 'https://consumer.huawei.com/en/tablets/matepad-pro-13-2/',
+  },
 ];
 
 export function getDeviceById(id: string): DeviceSpec {
-  return DEVICES.find((d) => d.id === id) || DEVICES[0];
+  const foundDevice = DEVICES.find((d) => d.id === id);
+  if (foundDevice) return foundDevice;
+
+  const foundAppliance = APPLIANCE_MODELS.find((m) => m.id === id);
+  if (foundAppliance) {
+    const baseUsd = getApplianceBasePriceUsd(foundAppliance.id);
+    return {
+      id: foundAppliance.id,
+      brand: 'samsung',
+      category: 'laptop',
+      geometryType: 'laptop-book4',
+      name: `${foundAppliance.brand} ${foundAppliance.modelCode} — ${foundAppliance.name}`,
+      tagline: foundAppliance.highlights,
+      summary: foundAppliance.highlights,
+      basePriceUsd: baseUsd,
+      releaseYear: '2025',
+      dimensionsMm: { width: 600, height: 850, depth: 600 },
+      weightGrams: 55000,
+      numericMetrics: {
+        screenInches: foundAppliance.capacityValue,
+        batteryScore: 9500,
+        cameraMp: 0,
+      },
+      specs: {
+        processor: foundAppliance.specs.type,
+        display: foundAppliance.capacityLabel,
+        graphics: foundAppliance.specs.powerOrConsumption,
+        camera: foundAppliance.specs.noiseOrCooling,
+        memory: foundAppliance.specs.smartFeatures,
+        battery: { en: foundAppliance.energyClass, hy: foundAppliance.energyClass },
+        chassis: foundAppliance.specs.finish,
+        connectivity: foundAppliance.warranty,
+      },
+      benchmarks: { singleCore: 2500, multiCore: 9000, gpuScore: 15000, peakNits: 1000 },
+      finishes: [
+        {
+          id: 'stainless-pro',
+          name: foundAppliance.specs.finish,
+          hex: '#7A828C',
+          accentHex: '#E5A952',
+          roughness: 0.25,
+          metalness: 0.85,
+        },
+        {
+          id: 'obsidian-black',
+          name: { en: 'Black Stainless Steel', hy: 'Սև Չժանգոտվող Պողպատ' },
+          hex: '#22252A',
+          accentHex: '#E5A952',
+          roughness: 0.28,
+          metalness: 0.82,
+        },
+      ],
+      storageOptions: [
+        {
+          id: 'standard',
+          label: `${foundAppliance.capacityLabel.en} · ${foundAppliance.dimensionsCm}`,
+          priceDeltaUsd: 0,
+        },
+        {
+          id: 'pro-warranty',
+          label: `${foundAppliance.capacityLabel.en} + VIP 5Y Care`,
+          priceDeltaUsd: 120,
+        },
+      ],
+      visualDetails3D: [],
+      screenBadge: foundAppliance.energyClass,
+      officialUrl: 'https://www.google.com',
+    };
+  }
+
+  return DEVICES[0];
 }
 
 export function getDevicesByBrand(brand: BrandId): DeviceSpec[] {

@@ -1,26 +1,34 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
-import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
-import { Footprints, RotateCcw } from 'lucide-react';
 import {
-  APPLIANCE_SCENE_ITEMS,
+  ArrowDown,
+  ArrowLeft,
+  ArrowRight,
+  ArrowUp,
+  Compass,
+  Footprints,
+  RotateCcw,
+} from 'lucide-react';
+import {
+  APPLIANCE_MODELS,
   ApplianceCategoryId,
-  HOME_ZONES,
   HomeZoneId,
 } from '../data/homeGuideData';
 import { DEVICES } from '../data/devices';
 import {
   ApplianceInteractiveState,
   BuiltApplianceRig,
-  BuiltTechDeskRig,
-  buildFullApartmentScene,
+  buildSingleAppliance,
+  createArchitecturalWoodWallTextures,
   updateApplianceRigAnimation,
 } from '../three/buildHomeAppliances';
+import { buildDeviceModel } from '../three/buildDeviceModel';
 import { Language } from '../types/hardware';
 
 interface HomeApartment3DProps {
@@ -31,9 +39,7 @@ interface HomeApartment3DProps {
   interactiveStates: Record<ApplianceCategoryId, ApplianceInteractiveState>;
   darkMode: boolean;
   lang: Language;
-  /** Scroll progress from 0 to 1 for Apple-style scrollytelling camera choreography */
   scrollProgress?: number;
-  /** When true, fills the sticky h-screen viewport edge-to-edge */
   fullScreen?: boolean;
 }
 
@@ -43,102 +49,359 @@ interface FloatingBadgePos {
   zone: Exclude<HomeZoneId, 'all'>;
   category?: ApplianceCategoryId;
   deviceId?: string;
+  brand: string;
   label: string;
+  subLabel: string;
+  priceUsd: number;
   x: number;
   y: number;
   visible: boolean;
 }
 
-interface CameraKeyframe {
-  t: number;
-  pos: [number, number, number];
-  target: [number, number, number];
+interface HomeHallExhibitDef {
+  key: string;
+  kind: 'appliance' | 'tech';
+  zone: Exclude<HomeZoneId, 'all'>;
+  category?: ApplianceCategoryId;
+  deviceId?: string;
+  brand: string;
+  title: { hy: string; en: string; ru: string };
+  subLabel: string;
+  priceUsd: number;
+  position: [number, number, number];
+  rotationY: number;
+  finishTintHex?: number;
 }
 
 /**
- * Multi-stage Scrollytelling Camera Keyframes (0.0 -> 1.0):
- * 0.00 - 0.25: All Rooms Panoramic Overview
- * 0.25 - 0.50: Kitchen Zone (Refrigerator -> 60 cm Gas Stove -> Microwave)
- * 0.50 - 0.75: Laundry Zone (Washing Machine & Tumble Dryer)
- * 0.75 - 1.00: Tech Desk (Galaxy S24 Ultra, iPhone 16 Pro Max, Workstation Laptop, Apple M4 Max SoC)
+ * 16 Exhibits arranged around all 4 walls of the enlarged 28m × 24m Home Appliances Hall:
+ * - NORTH WALL (z = -9.2, facing South ry = 0): 4 Flagship Refrigerators
+ * - EAST WALL  (x = +10.6, facing West ry = -PI/2): 2 Gas Stoves + 2 Inverter Microwaves
+ * - WEST WALL  (x = -10.6, facing East ry = +PI/2): 2 Washing Machines + 2 Heat-Pump Dryers
+ * - SOUTH WALL (z = +9.2, facing North ry = PI): 4 Studio & Home Appliances
  */
-const SCROLL_CAMERA_KEYFRAMES: CameraKeyframe[] = [
+const HOME_HALL_EXHIBITS: HomeHallExhibitDef[] = [
+  // ================= NORTH WALL: 4 REFRIGERATORS (Kitchen Cooling Wing) =================
   {
-    t: 0.0,
-    pos: [0.15, 2.65, 6.4],
-    target: [0.0, 0.95, -1.35],
+    key: 'rf-samsung-rf29',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'refrigerator',
+    brand: 'Samsung',
+    title: {
+      hy: 'Samsung Bespoke 4-Door Flex',
+      en: 'Samsung Bespoke 4-Door Flex',
+      ru: 'Samsung Bespoke 4-Door Flex',
+    },
+    subLabel: '635 L · A+++ · Twin Cooling Plus',
+    priceUsd: 2199,
+    position: [-7.5, 0, -9.2],
+    rotationY: 0,
+    finishTintHex: 0xcfd4dc,
   },
   {
-    t: 0.18,
-    pos: [-0.6, 2.35, 5.4],
-    target: [-0.85, 0.95, -1.45],
+    key: 'rf-lg-instaview',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'refrigerator',
+    brand: 'LG',
+    title: {
+      hy: 'LG InstaView Door-in-Door',
+      en: 'LG InstaView Door-in-Door',
+      ru: 'LG InstaView Door-in-Door',
+    },
+    subLabel: '617 L · A+++ · LinearCooling',
+    priceUsd: 2049,
+    position: [-2.5, 0, -9.2],
+    rotationY: 0,
+    finishTintHex: 0x3b3f46,
   },
   {
-    t: 0.3,
-    pos: [-3.55, 1.56, 2.55],
-    target: [-3.55, 0.96, -1.65],
+    key: 'rf-bosch-kgn86',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'refrigerator',
+    brand: 'Bosch',
+    title: {
+      hy: 'Bosch Serie 6 XXL NoFrost',
+      en: 'Bosch Serie 6 XXL NoFrost',
+      ru: 'Bosch Serie 6 XXL NoFrost',
+    },
+    subLabel: '631 L · A++ · VitaFresh XXL',
+    priceUsd: 1899,
+    position: [2.5, 0, -9.2],
+    rotationY: 0,
+    finishTintHex: 0xd8dde4,
   },
   {
-    t: 0.44,
-    pos: [-2.45, 1.42, 1.85],
-    target: [-2.45, 1.02, -1.65],
+    key: 'rf-whirlpool-wq70',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'refrigerator',
+    brand: 'Whirlpool',
+    title: {
+      hy: 'Whirlpool 6th Sense Cross-Door',
+      en: 'Whirlpool 6th Sense Cross-Door',
+      ru: 'Whirlpool 6th Sense Cross-Door',
+    },
+    subLabel: '594 L · A++ · Dual NoFrost',
+    priceUsd: 1749,
+    position: [7.5, 0, -9.2],
+    rotationY: 0,
+    finishTintHex: 0x565b63,
+  },
+
+  // ================= EAST WALL: GAS STOVES & MICROWAVES (Kitchen Cooking Wing) =================
+  {
+    key: 'gs-bosch-hga',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'gas_stove',
+    brand: 'Bosch',
+    title: {
+      hy: 'Bosch Serie 4 (60 սմ Գազօջախ)',
+      en: 'Bosch Serie 4 (60 cm Gas Range)',
+      ru: 'Bosch Serie 4 (60 см Газовая плита)',
+    },
+    subLabel: '71 L · 4 Burners · Cast Iron',
+    priceUsd: 899,
+    position: [10.6, 0, -6.3],
+    rotationY: -Math.PI / 2,
   },
   {
-    t: 0.56,
-    pos: [0.05, 1.52, 2.35],
-    target: [0.05, 0.74, -1.68],
+    key: 'gs-beko-fse62',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'gas_stove',
+    brand: 'Beko',
+    title: {
+      hy: 'Beko bPRO 500 Գազօջախ',
+      en: 'Beko bPRO 500 Gas Stove',
+      ru: 'Beko bPRO 500 Газовая плита',
+    },
+    subLabel: '72 L · High-Efficiency Burners',
+    priceUsd: 789,
+    position: [10.6, 0, -2.1],
+    rotationY: -Math.PI / 2,
+    finishTintHex: 0x2c2f34,
   },
   {
-    t: 0.68,
-    pos: [0.42, 1.46, 2.05],
-    target: [0.35, 0.68, -1.68],
+    key: 'mw-panasonic-nn',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'microwave',
+    brand: 'Panasonic',
+    title: {
+      hy: 'Panasonic Inverter Միկրոալիքային',
+      en: 'Panasonic Cyclonic Inverter Microwave',
+      ru: 'Микроволновая печь Panasonic Inverter',
+    },
+    subLabel: '34 L · 1000W · Cyclonic Inverter',
+    priceUsd: 429,
+    position: [10.6, 0, 2.1],
+    rotationY: -Math.PI / 2,
   },
   {
-    t: 0.82,
-    pos: [3.15, 1.62, 2.05],
-    target: [3.25, 0.88, -1.22],
+    key: 'mw-samsung-mc32',
+    kind: 'appliance',
+    zone: 'kitchen',
+    category: 'microwave',
+    brand: 'Samsung',
+    title: {
+      hy: 'Samsung BESPOKE Smart Oven',
+      en: 'Samsung BESPOKE Smart Microwave',
+      ru: 'Samsung BESPOKE Микроволновая печь',
+    },
+    subLabel: '32 L · 900W · Convection + Grill',
+    priceUsd: 399,
+    position: [10.6, 0, 6.3],
+    rotationY: -Math.PI / 2,
+  },
+
+  // ================= WEST WALL: WASHING MACHINES & DRYERS (Laundry Care Wing) =================
+  {
+    key: 'wm-lg-f4v5',
+    kind: 'appliance',
+    zone: 'laundry',
+    category: 'washing_machine',
+    brand: 'LG',
+    title: {
+      hy: 'LG AI DD Լվացքի Մեքենա',
+      en: 'LG AI DD Direct-Drive Washer',
+      ru: 'Стиральная машина LG AI DD',
+    },
+    subLabel: '10.5 kg · 1400 RPM · Steam+',
+    priceUsd: 1099,
+    position: [-10.6, 0, -6.3],
+    rotationY: Math.PI / 2,
   },
   {
-    t: 1.0,
-    pos: [3.55, 1.44, 1.45],
-    target: [3.42, 0.88, -1.22],
+    key: 'wm-bosch-wgg24',
+    kind: 'appliance',
+    zone: 'laundry',
+    category: 'washing_machine',
+    brand: 'Bosch',
+    title: {
+      hy: 'Bosch Serie 6 ActiveWater Plus',
+      en: 'Bosch Serie 6 Front-Load Washer',
+      ru: 'Стиральная машина Bosch Serie 6',
+    },
+    subLabel: '9 kg · 1400 RPM · EcoSilence Drive',
+    priceUsd: 1049,
+    position: [-10.6, 0, -2.1],
+    rotationY: Math.PI / 2,
+    finishTintHex: 0xdce1e8,
+  },
+  {
+    key: 'dr-electrolux-ew8h',
+    kind: 'appliance',
+    zone: 'laundry',
+    category: 'dryer',
+    brand: 'Electrolux',
+    title: {
+      hy: 'Electrolux DelicateCare Չորանոց',
+      en: 'Electrolux DelicateCare Heat-Pump Dryer',
+      ru: 'Сушильная машина Electrolux',
+    },
+    subLabel: '9 kg · A+++ · Heat Pump',
+    priceUsd: 1149,
+    position: [-10.6, 0, 2.1],
+    rotationY: Math.PI / 2,
+  },
+  {
+    key: 'dr-samsung-dv90',
+    kind: 'appliance',
+    zone: 'laundry',
+    category: 'dryer',
+    brand: 'Samsung',
+    title: {
+      hy: 'Samsung OptimalDry AI Չորանոց',
+      en: 'Samsung OptimalDry AI Heat-Pump Dryer',
+      ru: 'Сушильная машина Samsung OptimalDry',
+    },
+    subLabel: '9 kg · A+++ · Digital Inverter',
+    priceUsd: 1199,
+    position: [-10.6, 0, 6.3],
+    rotationY: Math.PI / 2,
+    finishTintHex: 0x34383f,
+  },
+
+  // ================= SOUTH WALL: STUDIO DESKS & SMART HOME (Office Wing) =================
+  {
+    key: 'lp-macbook-pro16',
+    kind: 'appliance',
+    zone: 'office',
+    category: 'laptop',
+    brand: 'Apple',
+    title: {
+      hy: 'MacBook Pro 16" (M4 Max) Ստուդիա',
+      en: 'MacBook Pro 16" (M4 Max) Studio Desk',
+      ru: 'MacBook Pro 16" (M4 Max) Студия',
+    },
+    subLabel: '16.2" Liquid Retina XDR · 128GB',
+    priceUsd: 3499,
+    position: [-6.8, 0, 9.2],
+    rotationY: Math.PI,
+  },
+  {
+    key: 'lp-asus-proart16',
+    kind: 'appliance',
+    zone: 'office',
+    category: 'laptop',
+    brand: 'ASUS',
+    title: {
+      hy: 'ASUS ProArt P16 (4K OLED) Սեղան',
+      en: 'ASUS ProArt P16 Creator Workstation',
+      ru: 'ASUS ProArt P16 Рабочая станция',
+    },
+    subLabel: '16" 4K OLED · RTX 4070 · 64GB',
+    priceUsd: 2699,
+    position: [-2.2, 0, 9.2],
+    rotationY: Math.PI,
+  },
+  {
+    key: 'tech-galaxy-s25-ultra',
+    kind: 'tech',
+    zone: 'office',
+    deviceId: 'galaxy-s25-ultra',
+    brand: 'Samsung',
+    title: {
+      hy: 'Galaxy S25 Ultra SmartThings Hub',
+      en: 'Galaxy S25 Ultra SmartThings Hub',
+      ru: 'Galaxy S25 Ultra Умный дом',
+    },
+    subLabel: '6.9" Dynamic AMOLED · SD 8 Elite',
+    priceUsd: 1299,
+    position: [2.2, 0, 9.2],
+    rotationY: Math.PI,
+  },
+  {
+    key: 'tech-iphone-16-pro-max',
+    kind: 'tech',
+    zone: 'office',
+    deviceId: 'iphone-16-pro-max',
+    brand: 'Apple',
+    title: {
+      hy: 'iPhone 16 Pro Max Apple Home',
+      en: 'iPhone 16 Pro Max Apple Home Hub',
+      ru: 'iPhone 16 Pro Max Умный дом',
+    },
+    subLabel: '6.9" Super Retina XDR · A18 Pro',
+    priceUsd: 1199,
+    position: [6.8, 0, 9.2],
+    rotationY: Math.PI,
   },
 ];
 
-function smoothstep(x: number): number {
-  const c = Math.max(0, Math.min(1, x));
-  return c * c * (3 - 2 * c);
-}
+// Zone camera presets (pos + yaw + pitch) inside the enlarged 28m × 24m 360° room
+const ZONE_VIEW_PRESETS: Record<
+  HomeZoneId,
+  { pos: [number, number, number]; yaw: number; pitch: number }
+> = {
+  all: { pos: [0, 1.68, 3.0], yaw: 0, pitch: -0.04 }, // Looking North at Refrigerators & room
+  kitchen: { pos: [3.2, 1.68, -1.6], yaw: -0.68, pitch: -0.05 }, // Facing North-East (Fridges + Stoves + Microwaves)
+  laundry: { pos: [-4.2, 1.68, 0.0], yaw: Math.PI / 2, pitch: -0.05 }, // Facing West wall (Washers + Dryers)
+  office: { pos: [0, 1.68, 2.4], yaw: Math.PI, pitch: -0.05 }, // Facing South wall (Studio Desks + Smart Home)
+};
 
-function sampleScrollCamera(
-  progress: number,
-  outPos: THREE.Vector3,
-  outTarget: THREE.Vector3
-) {
-  const p = Math.max(0, Math.min(1, progress));
-  for (let i = 0; i < SCROLL_CAMERA_KEYFRAMES.length - 1; i++) {
-    const k0 = SCROLL_CAMERA_KEYFRAMES[i];
-    const k1 = SCROLL_CAMERA_KEYFRAMES[i + 1];
-    if (p >= k0.t && p <= k1.t) {
-      const span = Math.max(0.0001, k1.t - k0.t);
-      const localT = smoothstep((p - k0.t) / span);
-      outPos.set(
-        THREE.MathUtils.lerp(k0.pos[0], k1.pos[0], localT),
-        THREE.MathUtils.lerp(k0.pos[1], k1.pos[1], localT),
-        THREE.MathUtils.lerp(k0.pos[2], k1.pos[2], localT)
-      );
-      outTarget.set(
-        THREE.MathUtils.lerp(k0.target[0], k1.target[0], localT),
-        THREE.MathUtils.lerp(k0.target[1], k1.target[1], localT),
-        THREE.MathUtils.lerp(k0.target[2], k1.target[2], localT)
-      );
-      return;
+// Stage 4: Subtle Film Grain + Architectural Vignette Final Shader Pass
+const HOME_GRAIN_VIGNETTE_SHADER = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uTime: { value: 0.0 },
+    uGrainStrength: { value: 0.02 },
+    uVignetteOffset: { value: 1.04 },
+    uVignetteDarkness: { value: 0.36 },
+  },
+  vertexShader: /* glsl */ `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
     }
-  }
-  const last = SCROLL_CAMERA_KEYFRAMES[SCROLL_CAMERA_KEYFRAMES.length - 1];
-  outPos.set(...last.pos);
-  outTarget.set(...last.target);
-}
+  `,
+  fragmentShader: /* glsl */ `
+    uniform sampler2D tDiffuse;
+    uniform float uTime;
+    uniform float uGrainStrength;
+    uniform float uVignetteOffset;
+    uniform float uVignetteDarkness;
+    varying vec2 vUv;
+
+    float rand(vec2 co) {
+      return fract(sin(dot(co.xy, vec2(12.9898, 78.233))) * 43758.5453);
+    }
+
+    void main() {
+      vec4 texel = texture2D(tDiffuse, vUv);
+      vec2 uv = (vUv - vec2(0.5)) * vec2(uVignetteOffset);
+      float vig = clamp(1.0 - dot(uv, uv) * uVignetteDarkness, 0.0, 1.0);
+      float noise = (rand(vUv + fract(uTime * 0.07)) - 0.5) * uGrainStrength;
+      vec3 col = texel.rgb * vig + vec3(noise);
+      gl_FragColor = vec4(clamp(col, 0.0, 1.0), texel.a);
+    }
+  `,
+};
 
 export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
   activeZone,
@@ -148,7 +411,6 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
   interactiveStates,
   darkMode,
   lang,
-  scrollProgress,
   fullScreen = false,
 }) => {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -156,60 +418,60 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
   const [loadProgress, setLoadProgress] = useState(15);
   const [webglError, setWebglError] = useState(false);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const [walkMode, setWalkMode] = useState(false);
   const [badgePositions, setBadgePositions] = useState<FloatingBadgePos[]>([]);
 
   const activeZoneRef = useRef<HomeZoneId>(activeZone);
   const selectedCategoryRef = useRef<ApplianceCategoryId | null>(selectedCategory);
   const hoveredKeyRef = useRef<string | null>(null);
   const interactiveStatesRef = useRef(interactiveStates);
-  const walkModeRef = useRef(walkMode);
-  const cameraGlideActiveRef = useRef(true);
-  const scrollDrivenRef = useRef(typeof scrollProgress === 'number');
-  const lastScrollProgressRef = useRef<number>(scrollProgress ?? 0);
 
-  const desiredCamPosRef = useRef(new THREE.Vector3(0.15, 2.65, 6.4));
-  const desiredTargetRef = useRef(new THREE.Vector3(0.0, 0.95, -1.35));
+  // First-person 360° free-walk camera state
+  const currentCamPosRef = useRef(new THREE.Vector3(0, 1.68, 2.2));
+  const targetCamPosRef = useRef(new THREE.Vector3(0, 1.68, 2.2));
+  const currentYawRef = useRef(0);
+  const targetYawRef = useRef(0);
+  const currentPitchRef = useRef(-0.05);
+  const targetPitchRef = useRef(-0.05);
 
-  const walkInputRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
+  const walkInputRef = useRef<{ forward: number; strafe: number; turn: number }>({
+    forward: 0,
+    strafe: 0,
+    turn: 0,
+  });
   const keysPressedRef = useRef<Set<string>>(new Set());
 
-  // Update camera target when scrollProgress changes
-  useEffect(() => {
-    if (typeof scrollProgress === 'number') {
-      const delta = Math.abs(scrollProgress - lastScrollProgressRef.current);
-      lastScrollProgressRef.current = scrollProgress;
-      if (delta > 0.0005 || scrollDrivenRef.current) {
-        scrollDrivenRef.current = true;
-        cameraGlideActiveRef.current = true;
-        sampleScrollCamera(
-          scrollProgress,
-          desiredCamPosRef.current,
-          desiredTargetRef.current
-        );
-      }
-    }
-  }, [scrollProgress]);
-
+  // When activeZone changes from top pills, orient camera toward that wing
   useEffect(() => {
     activeZoneRef.current = activeZone;
-    if (typeof scrollProgress !== 'number') {
-      const zoneDef = HOME_ZONES.find((z) => z.id === activeZone) || HOME_ZONES[0];
-      desiredCamPosRef.current.set(...zoneDef.cameraPos);
-      desiredTargetRef.current.set(...zoneDef.cameraTarget);
-      cameraGlideActiveRef.current = true;
-    }
-  }, [activeZone, scrollProgress]);
+    const preset = ZONE_VIEW_PRESETS[activeZone] || ZONE_VIEW_PRESETS.all;
+    targetCamPosRef.current.set(...preset.pos);
+    // Shortest angular path for yaw
+    let deltaYaw = preset.yaw - currentYawRef.current;
+    deltaYaw = Math.atan2(Math.sin(deltaYaw), Math.cos(deltaYaw));
+    targetYawRef.current = currentYawRef.current + deltaYaw;
+    targetPitchRef.current = preset.pitch;
+  }, [activeZone]);
 
+  // When a specific appliance category is selected, step in front of its first exhibit
   useEffect(() => {
     selectedCategoryRef.current = selectedCategory;
     if (selectedCategory) {
-      const item = APPLIANCE_SCENE_ITEMS.find((a) => a.id === selectedCategory);
-      if (item) {
-        scrollDrivenRef.current = false;
-        desiredCamPosRef.current.set(...item.cameraPos);
-        desiredTargetRef.current.set(...item.cameraTarget);
-        cameraGlideActiveRef.current = true;
+      const ex = HOME_HALL_EXHIBITS.find((e) => e.category === selectedCategory);
+      if (ex) {
+        const frontDir = new THREE.Vector3(0, 0, 1).applyAxisAngle(
+          new THREE.Vector3(0, 1, 0),
+          ex.rotationY
+        );
+        const standPos = new THREE.Vector3(...ex.position).addScaledVector(frontDir, 3.1);
+        targetCamPosRef.current.set(standPos.x, 1.68, standPos.z);
+
+        const lookDx = ex.position[0] - standPos.x;
+        const lookDz = ex.position[2] - standPos.z;
+        const desiredYaw = Math.atan2(-lookDx, -lookDz);
+        let deltaYaw = desiredYaw - currentYawRef.current;
+        deltaYaw = Math.atan2(Math.sin(deltaYaw), Math.cos(deltaYaw));
+        targetYawRef.current = currentYawRef.current + deltaYaw;
+        targetPitchRef.current = -0.07;
       }
     }
   }, [selectedCategory]);
@@ -218,15 +480,17 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
     interactiveStatesRef.current = interactiveStates;
   }, [interactiveStates]);
 
-  useEffect(() => {
-    walkModeRef.current = walkMode;
-  }, [walkMode]);
-
+  // Keyboard WASD + Arrow keys + Q/E 360° walking & turning
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (!walkModeRef.current) return;
+      const tag = (e.target as HTMLElement | null)?.tagName;
+      if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
       const key = e.key.toLowerCase();
-      if (['w', 'a', 's', 'd', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(key)) {
+      if (
+        ['w', 'a', 's', 'd', 'q', 'e', 'arrowup', 'arrowdown', 'arrowleft', 'arrowright'].includes(
+          key
+        )
+      ) {
         keysPressedRef.current.add(key);
       }
     };
@@ -273,15 +537,17 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
         }
       })();
 
+      const isMobile = window.innerWidth < 768 || 'ontouchstart' in window;
+      const maxDpr = isSoftwareGl ? 1 : isMobile ? 1.5 : 2;
       renderer = new THREE.WebGLRenderer({
         antialias: !isSoftwareGl,
         powerPreference: 'high-performance',
       });
       renderer.outputColorSpace = THREE.SRGBColorSpace;
       renderer.toneMapping = THREE.ACESFilmicToneMapping;
-      renderer.toneMappingExposure = 0.88;
+      renderer.toneMappingExposure = 1.05;
       renderer.setPixelRatio(
-        isSoftwareGl ? 1 : Math.min(window.devicePixelRatio || 1, 2)
+        Math.min(window.devicePixelRatio || 1, maxDpr)
       );
       renderer.setSize(w, h);
       renderer.shadowMap.enabled = !isSoftwareGl;
@@ -300,149 +566,355 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
       container.innerHTML = '';
       container.appendChild(renderer.domElement);
 
-      setLoadProgress(55);
+      setLoadProgress(50);
 
       const scene = new THREE.Scene();
-      const bgHex = darkMode ? 0x0c0b0d : 0x161312;
+      const bgHex = darkMode ? 0x0b0a0d : 0x151213;
       scene.background = new THREE.Color(bgHex);
-      scene.fog = new THREE.FogExp2(bgHex, 0.026);
+      scene.fog = new THREE.FogExp2(bgHex, 0.015);
 
       pmremGenerator = new THREE.PMREMGenerator(renderer);
       envTarget = pmremGenerator.fromScene(new RoomEnvironment(), 0.04);
       scene.environment = envTarget.texture;
-      scene.environmentIntensity = 0.34;
+      scene.environmentIntensity = 0.45;
 
-      const camera = new THREE.PerspectiveCamera(42, w / h, 0.1, 60);
-      camera.position.copy(desiredCamPosRef.current);
+      const camera = new THREE.PerspectiveCamera(50, w / h, 0.1, 65);
+      camera.position.copy(currentCamPosRef.current);
 
-      const controls = new OrbitControls(camera, renderer.domElement);
-      controls.enableDamping = !isSoftwareGl;
-      controls.dampingFactor = 0.06;
-      controls.maxPolarAngle = Math.PI / 2 - 0.04;
-      controls.minDistance = 1.05;
-      controls.maxDistance = 13.5;
-      // Allow vertical page scrolling with mouse wheel while in scrollytelling mode
-      controls.enableZoom = !fullScreen;
-      controls.target.copy(desiredTargetRef.current);
-
-      const stopGlide = () => {
-        cameraGlideActiveRef.current = false;
-        scrollDrivenRef.current = false;
-      };
-      controls.addEventListener('start', stopGlide);
-
-      // Calibrated Architectural Showroom Lighting
-      const hemiLight = new THREE.HemisphereLight(0xf3eadc, 0x1a1512, 0.3);
+      // Ambient & Directional Hall Lighting
+      const hemiLight = new THREE.HemisphereLight(0xfff2e2, 0x1a1514, 0.55);
       scene.add(hemiLight);
 
-      const keyDirLight = new THREE.DirectionalLight(0xfff1dc, 0.65);
-      keyDirLight.position.set(3.5, 6.5, 5.0);
+      const dirLight = new THREE.DirectionalLight(0xfff1dc, 0.75);
+      dirLight.position.set(4.5, 8.5, 5.5);
       if (!isSoftwareGl) {
-        keyDirLight.castShadow = true;
-        keyDirLight.shadow.mapSize.width = 1024;
-        keyDirLight.shadow.mapSize.height = 1024;
-        keyDirLight.shadow.camera.near = 0.5;
-        keyDirLight.shadow.camera.far = 20;
-        const d = 6.5;
-        keyDirLight.shadow.camera.left = -d;
-        keyDirLight.shadow.camera.right = d;
-        keyDirLight.shadow.camera.top = d;
-        keyDirLight.shadow.camera.bottom = -d;
-        keyDirLight.shadow.bias = -0.0005;
-        keyDirLight.shadow.normalBias = 0.02;
+        dirLight.castShadow = true;
+        dirLight.shadow.mapSize.width = 1024;
+        dirLight.shadow.mapSize.height = 1024;
+        dirLight.shadow.camera.near = 0.5;
+        dirLight.shadow.camera.far = 28;
+        const d = 11;
+        dirLight.shadow.camera.left = -d;
+        dirLight.shadow.camera.right = d;
+        dirLight.shadow.camera.top = d;
+        dirLight.shadow.camera.bottom = -d;
+        dirLight.shadow.bias = -0.0005;
       }
-      scene.add(keyDirLight);
+      scene.add(dirLight);
 
-      const addZoneSpot = (
-        pos: [number, number, number],
-        targetPos: [number, number, number],
-        colorHex: number,
-        intensity: number
-      ) => {
-        const spot = new THREE.SpotLight(colorHex, intensity, 8.5, Math.PI / 4.2, 0.72, 1.35);
-        spot.position.set(...pos);
-        spot.target.position.set(...targetPos);
-        scene.add(spot);
-        scene.add(spot.target);
-      };
+      // =========================================================================
+      // BUILD 360° ARCHITECTURAL HOME & MAJOR APPLIANCES HALL (20m × 18m)
+      // =========================================================================
+      const hallGroup = new THREE.Group();
+      scene.add(hallGroup);
 
-      // Kitchen Spotlights
-      addZoneSpot([-4.35, 2.55, 0.35], [-4.35, 1.0, -1.65], 0xffe9cc, 2.6);
-      addZoneSpot([-3.15, 2.55, 0.35], [-3.15, 0.65, -1.68], 0xffe4c2, 2.8);
-      addZoneSpot([-2.0, 2.45, 0.25], [-2.0, 1.1, -1.65], 0xffe9cc, 2.1);
+      const woodTextures = createArchitecturalWoodWallTextures(darkMode);
+      const wallMat = new THREE.MeshStandardMaterial({
+        map: woodTextures.map,
+        normalMap: woodTextures.normalMap,
+        normalScale: new THREE.Vector2(0.35, 0.35),
+        roughness: 0.65,
+        metalness: 0.08,
+      });
 
-      // Laundry Spotlights
-      addZoneSpot([0.22, 2.55, 0.35], [0.22, 0.65, -1.68], 0xf0f6ff, 2.5);
+      const brassMat = new THREE.MeshStandardMaterial({
+        color: 0xd49a45,
+        roughness: 0.24,
+        metalness: 0.88,
+      });
 
-      // Tech Desk Spotlight
-      addZoneSpot([3.4, 2.45, 0.35], [3.4, 0.9, -1.25], 0xffedd5, 2.7);
+      const darkStoneFloorMat = new THREE.MeshStandardMaterial({
+        color: 0x161418,
+        roughness: 0.22,
+        metalness: 0.2,
+      });
 
-      setLoadProgress(80);
+      // Floor (28m × 24m) — pickable for click-to-walk, no center glare ring
+      const floorMesh = new THREE.Mesh(new THREE.PlaneGeometry(28, 24), darkStoneFloorMat);
+      floorMesh.rotation.x = -Math.PI / 2;
+      floorMesh.receiveShadow = true;
+      hallGroup.add(floorMesh);
 
-      const { apartmentGroup, applianceRigs, techDeskRigs } = buildFullApartmentScene(darkMode);
-      scene.add(apartmentGroup);
+      // Click-to-Walk Floor Target Ring
+      const walkRingGroup = new THREE.Group();
+      walkRingGroup.position.set(0, 0.012, 3.0);
+      walkRingGroup.visible = false;
+      const walkRingOuter = new THREE.Mesh(
+        new THREE.RingGeometry(0.24, 0.31, 32),
+        new THREE.MeshBasicMaterial({
+          color: 0xe5a952,
+          transparent: true,
+          opacity: 0.85,
+          side: THREE.DoubleSide,
+        })
+      );
+      walkRingOuter.rotation.x = -Math.PI / 2;
+      walkRingGroup.add(walkRingOuter);
+      scene.add(walkRingGroup);
 
+      // 4 Perimeter Slatted Wood Walls (North z=-11.4, South z=+11.4, West x=-12.6, East x=+12.6)
+      const wallHeight = 4.6;
+      const northWall = new THREE.Mesh(new THREE.BoxGeometry(26, wallHeight, 0.35), wallMat);
+      northWall.position.set(0, wallHeight / 2, -11.4);
+      hallGroup.add(northWall);
+
+      const southWall = new THREE.Mesh(new THREE.BoxGeometry(26, wallHeight, 0.35), wallMat);
+      southWall.position.set(0, wallHeight / 2, 11.4);
+      hallGroup.add(southWall);
+
+      const westWall = new THREE.Mesh(new THREE.BoxGeometry(0.35, wallHeight, 23.2), wallMat);
+      westWall.position.set(-12.6, wallHeight / 2, 0);
+      hallGroup.add(westWall);
+
+      const eastWall = new THREE.Mesh(new THREE.BoxGeometry(0.35, wallHeight, 23.2), wallMat);
+      eastWall.position.set(12.6, wallHeight / 2, 0);
+      hallGroup.add(eastWall);
+
+      // Brass Horizontal Gallery Rails along all 4 walls
+      const railN = new THREE.Mesh(new THREE.BoxGeometry(25.0, 0.04, 0.06), brassMat);
+      railN.position.set(0, 1.35, -11.18);
+      hallGroup.add(railN);
+      const railS = railN.clone();
+      railS.position.set(0, 1.35, 11.18);
+      hallGroup.add(railS);
+
+      const railW = new THREE.Mesh(new THREE.BoxGeometry(0.06, 0.04, 22.4), brassMat);
+      railW.position.set(-12.38, 1.35, 0);
+      hallGroup.add(railW);
+      const railE = railW.clone();
+      railE.position.set(12.38, 1.35, 0);
+      hallGroup.add(railE);
+
+      // Ceiling & Warm Light Strips (subtle so HDR FX has zero harsh center glare)
+      const ceilingMat = new THREE.MeshStandardMaterial({
+        color: 0x09080b,
+        roughness: 0.9,
+      });
+      const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(28, 24), ceilingMat);
+      ceiling.rotation.x = Math.PI / 2;
+      ceiling.position.y = wallHeight;
+      hallGroup.add(ceiling);
+
+      const lightStripMat = new THREE.MeshBasicMaterial({ color: 0xdba25e });
+      for (const lx of [-7.5, 0, 7.5]) {
+        const strip = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.025, 18.5), lightStripMat);
+        strip.position.set(lx, wallHeight - 0.03, 0);
+        hallGroup.add(strip);
+      }
+
+      setLoadProgress(72);
+
+      // =========================================================================
+      // POPULATE ALL 16 APPLIANCE & SMART-HOME EXHIBITS AROUND THE 4 WALLS
+      // =========================================================================
+      const plinthMat = new THREE.MeshStandardMaterial({
+        color: 0x221d20,
+        roughness: 0.38,
+        metalness: 0.25,
+      });
+      const crimsonCarpetMat = new THREE.MeshStandardMaterial({
+        color: 0x5c1922,
+        roughness: 0.78,
+        metalness: 0.05,
+      });
+      const counterWalnutMat = new THREE.MeshStandardMaterial({
+        color: 0x3b281e,
+        roughness: 0.42,
+        metalness: 0.1,
+      });
+
+      const pickableMeshes: THREE.Object3D[] = [];
+      const exhibitRigs: Array<{
+        def: HomeHallExhibitDef;
+        applianceRig?: BuiltApplianceRig;
+        rootGroup: THREE.Group;
+        labelAnchorLocal: THREE.Vector3;
+      }> = [];
+
+      HOME_HALL_EXHIBITS.forEach((def) => {
+        const holder = new THREE.Group();
+        holder.position.set(...def.position);
+        holder.rotation.y = def.rotationY;
+        hallGroup.add(holder);
+
+        // Stage Plinth under every exhibit with brass trim & crimson carpet top
+        const plinthW = def.category === 'refrigerator' ? 1.55 : 1.4;
+        const plinthD = 1.25;
+        const plinthH = 0.08;
+
+        const basePlinth = new THREE.Mesh(
+          new THREE.BoxGeometry(plinthW, plinthH, plinthD),
+          plinthMat
+        );
+        basePlinth.position.y = plinthH / 2;
+        basePlinth.receiveShadow = true;
+        holder.add(basePlinth);
+
+        const carpetTop = new THREE.Mesh(
+          new THREE.BoxGeometry(plinthW - 0.08, 0.015, plinthD - 0.08),
+          crimsonCarpetMat
+        );
+        carpetTop.position.y = plinthH + 0.007;
+        holder.add(carpetTop);
+
+        // Overhead Spotlight per Exhibit
+        const spot = new THREE.SpotLight(0xffe9c8, 2.4, 8.5, Math.PI / 4.5, 0.65, 1.3);
+        spot.position.set(0, 3.85, 1.15);
+        spot.target.position.set(0, 0.9, 0);
+        holder.add(spot);
+        holder.add(spot.target);
+
+        let labelAnchorLocal = new THREE.Vector3(0, 1.95, 0);
+
+        if (def.kind === 'appliance' && def.category) {
+          const rig = buildSingleAppliance(def.category);
+
+          // For microwaves or laptops, place a sleek walnut counter/desk underneath
+          if (def.category === 'microwave' || def.category === 'laptop') {
+            const deskH = 0.78;
+            const deskMesh = new THREE.Mesh(
+              new THREE.BoxGeometry(1.15, deskH, 0.76),
+              counterWalnutMat
+            );
+            deskMesh.position.set(0, plinthH + deskH / 2, 0);
+            deskMesh.castShadow = true;
+            deskMesh.receiveShadow = true;
+            holder.add(deskMesh);
+
+            rig.root.position.set(0, plinthH + deskH + 0.01, 0);
+            labelAnchorLocal = new THREE.Vector3(0, plinthH + deskH + 0.68, 0);
+          } else {
+            rig.root.position.set(0, plinthH + 0.01, 0);
+            labelAnchorLocal = rig.labelAnchorLocal
+              .clone()
+              .add(new THREE.Vector3(0, plinthH + 0.12, 0));
+          }
+
+          // Optional finish tint variation so the 4 fridges / washers look distinct
+          if (def.finishTintHex !== undefined) {
+            rig.root.traverse((child) => {
+              const mesh = child as THREE.Mesh;
+              if (mesh.isMesh && mesh.material) {
+                const mat = mesh.material as THREE.MeshStandardMaterial;
+                if (mat.metalness !== undefined && mat.metalness > 0.45 && mat.color) {
+                  const cloned = mat.clone();
+                  cloned.color.setHex(def.finishTintHex!);
+                  mesh.material = cloned;
+                }
+              }
+            });
+          }
+
+          rig.root.traverse((child) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.userData.exhibitKey = def.key;
+              child.userData.applianceCategory = def.category;
+              pickableMeshes.push(child);
+            }
+          });
+
+          holder.add(rig.root);
+          exhibitRigs.push({
+            def,
+            applianceRig: rig,
+            rootGroup: holder,
+            labelAnchorLocal,
+          });
+        } else if (def.kind === 'tech' && def.deviceId) {
+          const devSpec = DEVICES.find((d) => d.id === def.deviceId) || DEVICES[0];
+          const pedH = 0.96;
+          const ped = new THREE.Mesh(
+            new THREE.BoxGeometry(0.75, pedH, 0.75),
+            counterWalnutMat
+          );
+          ped.position.set(0, plinthH + pedH / 2, 0);
+          holder.add(ped);
+
+          const builtDev = buildDeviceModel(devSpec, devSpec.finishes[0]);
+          builtDev.root.scale.setScalar(0.18);
+          builtDev.root.position.set(0, plinthH + pedH + 0.34, 0);
+          builtDev.root.traverse((child: THREE.Object3D) => {
+            if ((child as THREE.Mesh).isMesh) {
+              child.userData.exhibitKey = def.key;
+              child.userData.techDeviceId = def.deviceId;
+              pickableMeshes.push(child);
+            }
+          });
+          holder.add(builtDev.root);
+
+          labelAnchorLocal = new THREE.Vector3(0, plinthH + pedH + 0.85, 0);
+          exhibitRigs.push({
+            def,
+            rootGroup: holder,
+            labelAnchorLocal,
+          });
+        }
+      });
+
+      let filmGrainPass: ShaderPass | null = null;
       if (!isSoftwareGl) {
         composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
         const bloomPass = new UnrealBloomPass(
           new THREE.Vector2(w, h),
-          0.1,
-          0.35,
+          0.06,
+          0.22,
           0.96
         );
         composer.addPass(bloomPass);
+        filmGrainPass = new ShaderPass(HOME_GRAIN_VIGNETTE_SHADER);
+        composer.addPass(filmGrainPass);
         composer.addPass(new OutputPass());
       }
 
-      const pickableMeshes: THREE.Object3D[] = [];
-      applianceRigs.forEach((rig: BuiltApplianceRig) => {
-        rig.root.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            pickableMeshes.push(child);
-          }
-        });
-      });
-      techDeskRigs.forEach((tRig: BuiltTechDeskRig) => {
-        tRig.root.traverse((child) => {
-          if ((child as THREE.Mesh).isMesh) {
-            pickableMeshes.push(child);
-          }
-        });
-      });
-
+      // =========================================================================
+      // POINTER INTERACTION: 360° DRAG LOOK + CLICK EXHIBIT OR CLICK FLOOR TO WALK
+      // =========================================================================
       const raycaster = new THREE.Raycaster();
       const pointer = new THREE.Vector2();
+      let isDraggingLook = false;
       let pointerDownPos = { x: 0, y: 0 };
+      let lastPointerPos = { x: 0, y: 0 };
 
-      const getHoveredHit = (
-        clientX: number,
-        clientY: number
-      ): { kind: 'appliance'; category: ApplianceCategoryId } | { kind: 'tech'; deviceId: string } | null => {
+      const getHoveredExhibit = (clientX: number, clientY: number): HomeHallExhibitDef | null => {
         const rect = renderer.domElement.getBoundingClientRect();
         pointer.x = ((clientX - rect.left) / rect.width) * 2 - 1;
         pointer.y = -((clientY - rect.top) / rect.height) * 2 + 1;
         raycaster.setFromCamera(pointer, camera);
         const hits = raycaster.intersectObjects(pickableMeshes, false);
         if (hits.length > 0) {
-          const ud = hits[0].object.userData;
-          if (ud?.techDeviceId) {
-            return { kind: 'tech', deviceId: String(ud.techDeviceId) };
-          }
-          if (ud?.applianceCategory) {
-            return { kind: 'appliance', category: ud.applianceCategory as ApplianceCategoryId };
+          const exKey = hits[0].object.userData?.exhibitKey;
+          if (exKey) {
+            return HOME_HALL_EXHIBITS.find((e) => e.key === exKey) || null;
           }
         }
         return null;
       };
 
+      const onPointerDown = (e: PointerEvent) => {
+        isDraggingLook = true;
+        pointerDownPos = { x: e.clientX, y: e.clientY };
+        lastPointerPos = { x: e.clientX, y: e.clientY };
+        renderer.domElement.style.cursor = 'grabbing';
+      };
+
       const onPointerMove = (e: PointerEvent) => {
-        const hit = getHoveredHit(e.clientX, e.clientY);
-        const nextKey = hit
-          ? hit.kind === 'appliance'
-            ? `app:${hit.category}`
-            : `tech:${hit.deviceId}`
-          : null;
+        if (isDraggingLook) {
+          const dx = e.clientX - lastPointerPos.x;
+          const dy = e.clientY - lastPointerPos.y;
+          lastPointerPos = { x: e.clientX, y: e.clientY };
+          // Unrestricted 360° yaw rotation + clamped pitch
+          targetYawRef.current -= dx * 0.0045;
+          targetPitchRef.current = THREE.MathUtils.clamp(
+            targetPitchRef.current - dy * 0.0032,
+            -0.62,
+            0.52
+          );
+          return;
+        }
+
+        const hit = getHoveredExhibit(e.clientX, e.clientY);
+        const nextKey = hit ? hit.key : null;
         if (nextKey !== hoveredKeyRef.current) {
           hoveredKeyRef.current = nextKey;
           setHoveredKey(nextKey);
@@ -450,28 +922,45 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
         }
       };
 
-      const onPointerDown = (e: PointerEvent) => {
-        pointerDownPos = { x: e.clientX, y: e.clientY };
-      };
-
       const onPointerUp = (e: PointerEvent) => {
-        const dx = Math.abs(e.clientX - pointerDownPos.x);
-        const dy = Math.abs(e.clientY - pointerDownPos.y);
-        if (dx < 8 && dy < 8) {
-          const hit = getHoveredHit(e.clientX, e.clientY);
-          if (hit) {
-            if (hit.kind === 'appliance') {
-              onSelectCategory(hit.category);
-            } else if (hit.kind === 'tech' && onSelectTechDevice) {
-              onSelectTechDevice(hit.deviceId);
+        isDraggingLook = false;
+        renderer.domElement.style.cursor = hoveredKeyRef.current ? 'pointer' : 'grab';
+
+        const moveDist = Math.hypot(
+          e.clientX - pointerDownPos.x,
+          e.clientY - pointerDownPos.y
+        );
+        if (moveDist < 7) {
+          const hitEx = getHoveredExhibit(e.clientX, e.clientY);
+          if (hitEx) {
+            if (hitEx.kind === 'appliance' && hitEx.category) {
+              onSelectCategory(hitEx.category);
+            } else if (hitEx.kind === 'tech' && hitEx.deviceId && onSelectTechDevice) {
+              onSelectTechDevice(hitEx.deviceId);
             }
+            return;
+          }
+
+          // Otherwise check if user clicked on the floor to walk there
+          const rect = renderer.domElement.getBoundingClientRect();
+          pointer.x = ((e.clientX - rect.left) / rect.width) * 2 - 1;
+          pointer.y = -((e.clientY - rect.top) / rect.height) * 2 + 1;
+          raycaster.setFromCamera(pointer, camera);
+          const floorHits = raycaster.intersectObject(floorMesh, false);
+          if (floorHits.length > 0) {
+            const pt = floorHits[0].point;
+            const clampedX = THREE.MathUtils.clamp(pt.x, -9.2, 9.2);
+            const clampedZ = THREE.MathUtils.clamp(pt.z, -7.8, 7.8);
+            targetCamPosRef.current.set(clampedX, 1.68, clampedZ);
+            walkRingGroup.position.set(clampedX, 0.015, clampedZ);
+            walkRingGroup.visible = true;
           }
         }
       };
 
-      renderer.domElement.addEventListener('pointermove', onPointerMove);
       renderer.domElement.addEventListener('pointerdown', onPointerDown);
-      renderer.domElement.addEventListener('pointerup', onPointerUp);
+      window.addEventListener('pointermove', onPointerMove);
+      window.addEventListener('pointerup', onPointerUp);
 
       const handleResize = () => {
         if (!container) return;
@@ -490,9 +979,7 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
       let lastTime = performance.now();
       let badgeFrameCounter = 0;
       const projVec = new THREE.Vector3();
-      const forwardDir = new THREE.Vector3();
-      const rightDir = new THREE.Vector3();
-      const moveDelta = new THREE.Vector3();
+      const lookDir = new THREE.Vector3();
 
       const animate = (now: number) => {
         animId = requestAnimationFrame(animate);
@@ -500,124 +987,174 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
         lastTime = now;
         const elapsed = now / 1000;
 
-        let moveForward = walkInputRef.current.y;
-        let moveStrafe = walkInputRef.current.x;
+        // 1. Process keyboard + on-screen 360° Walk & Turn controls
+        let moveForward = walkInputRef.current.forward;
+        let moveStrafe = walkInputRef.current.strafe;
+        let turnRate = walkInputRef.current.turn;
 
-        if (keysPressedRef.current.has('w') || keysPressedRef.current.has('arrowup')) moveForward += 1;
-        if (keysPressedRef.current.has('s') || keysPressedRef.current.has('arrowdown')) moveForward -= 1;
-        if (keysPressedRef.current.has('a') || keysPressedRef.current.has('arrowleft')) moveStrafe -= 1;
-        if (keysPressedRef.current.has('d') || keysPressedRef.current.has('arrowright')) moveStrafe += 1;
+        if (keysPressedRef.current.has('w') || keysPressedRef.current.has('arrowup')) {
+          moveForward += 1;
+        }
+        if (keysPressedRef.current.has('s') || keysPressedRef.current.has('arrowdown')) {
+          moveForward -= 1;
+        }
+        if (keysPressedRef.current.has('a')) {
+          moveStrafe -= 1;
+        }
+        if (keysPressedRef.current.has('d')) {
+          moveStrafe += 1;
+        }
+        if (keysPressedRef.current.has('arrowleft') || keysPressedRef.current.has('q')) {
+          turnRate += 1;
+        }
+        if (keysPressedRef.current.has('arrowright') || keysPressedRef.current.has('e')) {
+          turnRate -= 1;
+        }
+
+        if (Math.abs(turnRate) > 0.01) {
+          targetYawRef.current += turnRate * 1.85 * dt;
+        }
 
         if (Math.abs(moveForward) > 0.01 || Math.abs(moveStrafe) > 0.01) {
-          cameraGlideActiveRef.current = false;
-          scrollDrivenRef.current = false;
-          const speed = 2.6 * dt;
-          camera.getWorldDirection(forwardDir);
-          forwardDir.y = 0;
-          forwardDir.normalize();
+          const walkSpeed = 4.6 * dt;
+          const sinY = Math.sin(currentYawRef.current);
+          const cosY = Math.cos(currentYawRef.current);
+          // Forward vector in XZ plane for yaw
+          const fwdX = -sinY;
+          const fwdZ = -cosY;
+          const rightX = cosY;
+          const rightZ = -sinY;
 
-          rightDir.crossVectors(forwardDir, camera.up).normalize();
-          moveDelta
-            .set(0, 0, 0)
-            .addScaledVector(forwardDir, moveForward * speed)
-            .addScaledVector(rightDir, moveStrafe * speed);
+          targetCamPosRef.current.x = THREE.MathUtils.clamp(
+            targetCamPosRef.current.x + (fwdX * moveForward + rightX * moveStrafe) * walkSpeed,
+            -9.2,
+            9.2
+          );
+          targetCamPosRef.current.z = THREE.MathUtils.clamp(
+            targetCamPosRef.current.z + (fwdZ * moveForward + rightZ * moveStrafe) * walkSpeed,
+            -7.8,
+            7.8
+          );
+          walkRingGroup.visible = false;
+        }
 
-          camera.position.add(moveDelta);
-          controls.target.add(moveDelta);
-          camera.position.x = THREE.MathUtils.clamp(camera.position.x, -5.4, 5.4);
-          camera.position.z = THREE.MathUtils.clamp(camera.position.z, -0.8, 6.8);
-          camera.position.y = THREE.MathUtils.clamp(camera.position.y, 1.1, 4.8);
-        } else if (cameraGlideActiveRef.current || scrollDrivenRef.current) {
-          const lerpFactor = scrollDrivenRef.current ? Math.min(1, dt * 7.5) : Math.min(1, dt * 4.5);
-          camera.position.lerp(desiredCamPosRef.current, lerpFactor);
-          controls.target.lerp(desiredTargetRef.current, lerpFactor);
-          if (
-            !scrollDrivenRef.current &&
-            camera.position.distanceTo(desiredCamPosRef.current) < 0.025 &&
-            controls.target.distanceTo(desiredTargetRef.current) < 0.025
-          ) {
-            cameraGlideActiveRef.current = false;
+        // Smoothly damp camera position & 360° look orientation
+        currentCamPosRef.current.x = THREE.MathUtils.damp(
+          currentCamPosRef.current.x,
+          targetCamPosRef.current.x,
+          6.5,
+          dt
+        );
+        currentCamPosRef.current.y = THREE.MathUtils.damp(
+          currentCamPosRef.current.y,
+          targetCamPosRef.current.y,
+          6.5,
+          dt
+        );
+        currentCamPosRef.current.z = THREE.MathUtils.damp(
+          currentCamPosRef.current.z,
+          targetCamPosRef.current.z,
+          6.5,
+          dt
+        );
+
+        currentYawRef.current = THREE.MathUtils.damp(
+          currentYawRef.current,
+          targetYawRef.current,
+          8.0,
+          dt
+        );
+        currentPitchRef.current = THREE.MathUtils.damp(
+          currentPitchRef.current,
+          targetPitchRef.current,
+          8.0,
+          dt
+        );
+
+        camera.position.copy(currentCamPosRef.current);
+
+        const cosPitch = Math.cos(currentPitchRef.current);
+        lookDir.set(
+          -Math.sin(currentYawRef.current) * cosPitch,
+          Math.sin(currentPitchRef.current),
+          -Math.cos(currentYawRef.current) * cosPitch
+        );
+        camera.lookAt(
+          camera.position.x + lookDir.x * 10,
+          camera.position.y + lookDir.y * 10,
+          camera.position.z + lookDir.z * 10
+        );
+
+        if (walkRingGroup.visible) {
+          const distToRing = Math.hypot(
+            camera.position.x - walkRingGroup.position.x,
+            camera.position.z - walkRingGroup.position.z
+          );
+          if (distToRing < 0.35) {
+            walkRingGroup.visible = false;
           }
         }
 
-        controls.update();
-
-        applianceRigs.forEach((rig, category) => {
-          const st = interactiveStatesRef.current[category] || {
-            doorOpen: false,
-            secondaryActive: false,
-          };
-          const isHighlighted =
-            hoveredKeyRef.current === `app:${category}` ||
-            selectedCategoryRef.current === category;
-          updateApplianceRigAnimation(rig, st, isHighlighted, dt, elapsed);
-        });
-
-        techDeskRigs.forEach((tRig, deviceId) => {
-          const isHovered = hoveredKeyRef.current === `tech:${deviceId}`;
-          const lineMat = tRig.highlightBox.material as THREE.LineBasicMaterial;
-          lineMat.opacity = THREE.MathUtils.damp(
-            lineMat.opacity,
-            isHovered ? 0.95 : 0.0,
-            10,
-            dt
-          );
+        // 2. Animate Appliance Rigs (opening doors, burner flames, spinning drums)
+        exhibitRigs.forEach(({ def, applianceRig }) => {
+          if (applianceRig && def.category) {
+            const st = interactiveStatesRef.current[def.category] || {
+              doorOpen: false,
+              secondaryActive: false,
+            };
+            const isHighlighted =
+              hoveredKeyRef.current === def.key ||
+              selectedCategoryRef.current === def.category;
+            updateApplianceRigAnimation(applianceRig, st, isHighlighted, dt, elapsed);
+          }
         });
 
         if (composer) {
+          if (filmGrainPass?.uniforms?.uTime) {
+            filmGrainPass.uniforms.uTime.value = elapsed;
+          }
           composer.render();
         } else {
           renderer.render(scene, camera);
         }
 
+        // 3. Project Floating Price + Parameter Tags for visible appliances
         badgeFrameCounter++;
         if (badgeFrameCounter % 3 === 0) {
           const cw = renderer.domElement.clientWidth;
           const ch = renderer.domElement.clientHeight;
           const nextBadges: FloatingBadgePos[] = [];
 
-          applianceRigs.forEach((rig, category) => {
-            projVec.copy(rig.labelAnchorLocal);
-            rig.root.localToWorld(projVec);
+          exhibitRigs.forEach(({ def, rootGroup, labelAnchorLocal }) => {
+            projVec.copy(labelAnchorLocal);
+            rootGroup.localToWorld(projVec);
+            const dist = camera.position.distanceTo(projVec);
             projVec.project(camera);
-            const visible = projVec.z < 1 && projVec.z > -1;
+            const visible =
+              projVec.z < 1 &&
+              projVec.z > -1 &&
+              dist < 18.5 &&
+              projVec.x >= -0.95 &&
+              projVec.x <= 0.95 &&
+              projVec.y >= -0.9 &&
+              projVec.y <= 0.9;
             const x = (projVec.x * 0.5 + 0.5) * cw;
             const y = (-projVec.y * 0.5 + 0.5) * ch;
-            const info = APPLIANCE_SCENE_ITEMS.find((i) => i.id === category);
-            if (info) {
-              nextBadges.push({
-                key: `app:${category}`,
-                kind: 'appliance',
-                zone: info.zone,
-                category,
-                label: info.name[lang],
-                x,
-                y,
-                visible,
-              });
-            }
-          });
 
-          techDeskRigs.forEach((tRig, deviceId) => {
-            projVec.copy(tRig.labelAnchorLocal);
-            tRig.root.localToWorld(projVec);
-            projVec.project(camera);
-            const visible = projVec.z < 1 && projVec.z > -1;
-            const x = (projVec.x * 0.5 + 0.5) * cw;
-            const y = (-projVec.y * 0.5 + 0.5) * ch;
-            const dev = DEVICES.find((d) => d.id === deviceId);
-            if (dev) {
-              nextBadges.push({
-                key: `tech:${deviceId}`,
-                kind: 'tech',
-                zone: 'office',
-                deviceId,
-                label: dev.name,
-                x,
-                y,
-                visible,
-              });
-            }
+            nextBadges.push({
+              key: def.key,
+              kind: def.kind,
+              zone: def.zone,
+              category: def.category,
+              deviceId: def.deviceId,
+              brand: def.brand,
+              label: def.title[lang],
+              subLabel: def.subLabel,
+              priceUsd: def.priceUsd,
+              x,
+              y,
+              visible,
+            });
           });
 
           setBadgePositions(nextBadges);
@@ -629,12 +1166,19 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
       return () => {
         cancelAnimationFrame(animId);
         window.removeEventListener('resize', handleResize);
-        renderer.domElement.removeEventListener('pointermove', onPointerMove);
         renderer.domElement.removeEventListener('pointerdown', onPointerDown);
-        renderer.domElement.removeEventListener('pointerup', onPointerUp);
+        window.removeEventListener('pointermove', onPointerMove);
+        window.removeEventListener('pointerup', onPointerUp);
         renderer.domElement.removeEventListener('webglcontextlost', onContextLost);
         renderer.domElement.removeEventListener('webglcontextrestored', onContextRestored);
-        controls.dispose();
+        scene.traverse((obj: THREE.Object3D) => {
+          const mesh = obj as THREE.Mesh;
+          if (mesh.isMesh) {
+            mesh.geometry?.dispose();
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            mats.forEach((m) => m?.dispose());
+          }
+        });
         composer?.dispose();
         envTarget?.dispose();
         pmremGenerator?.dispose();
@@ -649,19 +1193,12 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
   }, [darkMode, lang, fullScreen, onSelectCategory, onSelectTechDevice]);
 
   const handleResetCamera = () => {
-    if (typeof scrollProgress === 'number') {
-      scrollDrivenRef.current = true;
-      sampleScrollCamera(
-        scrollProgress,
-        desiredCamPosRef.current,
-        desiredTargetRef.current
-      );
-    } else {
-      const zoneDef = HOME_ZONES.find((z) => z.id === activeZone) || HOME_ZONES[0];
-      desiredCamPosRef.current.set(...zoneDef.cameraPos);
-      desiredTargetRef.current.set(...zoneDef.cameraTarget);
-    }
-    cameraGlideActiveRef.current = true;
+    const preset = ZONE_VIEW_PRESETS[activeZone] || ZONE_VIEW_PRESETS.all;
+    targetCamPosRef.current.set(...preset.pos);
+    let deltaYaw = preset.yaw - currentYawRef.current;
+    deltaYaw = Math.atan2(Math.sin(deltaYaw), Math.cos(deltaYaw));
+    targetYawRef.current = currentYawRef.current + deltaYaw;
+    targetPitchRef.current = preset.pitch;
   };
 
   if (webglError) {
@@ -674,8 +1211,8 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
         </p>
         <p className="text-xs text-white/65">
           {lang === 'hy'
-            ? 'Օգտագործեք վերևի «Ցանկ» կոճակը կամ ընտրեք սարքը ստորև։'
-            : 'Use the List button above or pick an appliance below.'}
+            ? 'Օգտագործեք վերևի «Կատալոգ» կոճակը կամ ընտրեք սարքը ստորև։'
+            : 'Use the Catalog button above or pick an appliance below.'}
         </p>
       </div>
     );
@@ -683,20 +1220,20 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
 
   return (
     <div
-      className={`relative w-full overflow-hidden select-none bg-[#0e0c0e] ${
+      className={`relative w-full overflow-hidden select-none bg-[#0b0a0d] ${
         fullScreen
           ? 'h-full'
-          : 'h-[520px] sm:h-[600px] lg:h-[680px] rounded-2xl border border-white/10 shadow-2xl'
+          : 'h-[560px] sm:h-[640px] lg:h-[720px] rounded-2xl border border-white/10 shadow-2xl'
       }`}
     >
       {/* Loading Bar */}
       {loading && (
-        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0e0c0e] px-6 text-white">
+        <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0b0a0d] px-6 text-white">
           <div className="w-full max-w-xs space-y-2.5 text-center">
             <div className="text-xs font-medium tracking-wide text-white/80">
               {lang === 'hy'
-                ? `Բեռնվում է 3D ցուցասրահը (${loadProgress}%)`
-                : `Loading 3D Showroom (${loadProgress}%)`}
+                ? `Բեռնվում է Տան Տեխնիկայի 360° Սրահը (${loadProgress}%)`
+                : `Loading 360° Home Appliances Hall (${loadProgress}%)`}
             </div>
             <div className="w-full h-1.5 rounded-full bg-white/15 overflow-hidden">
               <div
@@ -711,11 +1248,10 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
       {/* Three.js Canvas */}
       <div ref={containerRef} className="w-full h-full" />
 
-      {/* Minimal Floating 3D Object Labels */}
+      {/* Compact Floating 3D Price + Parameter Tags (Գնապիտակ իր պարամետրերով) */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden">
         {badgePositions.map((b) => {
           if (!b.visible) return null;
-          if (activeZone !== 'all' && b.zone !== activeZone) return null;
           const isSelected = b.kind === 'appliance' && selectedCategory === b.category;
           const isHovered = hoveredKey === b.key;
 
@@ -733,116 +1269,117 @@ export const HomeApartment3D: React.FC<HomeApartment3DProps> = ({
               style={{
                 transform: `translate3d(${Math.round(b.x)}px, ${Math.round(b.y)}px, 0) translate(-50%, -100%)`,
               }}
-              className={`pointer-events-auto absolute top-0 left-0 px-2.5 py-1 rounded-md border text-[11px] font-medium whitespace-nowrap transition-colors backdrop-blur-md cursor-pointer flex items-center gap-1.5 ${
+              className={`pointer-events-auto absolute top-0 left-0 px-2 py-1 rounded-lg border text-left transition-all backdrop-blur-md cursor-pointer ${
                 isSelected || isHovered
-                  ? 'bg-[#E5A952] text-[#0c0b0d] border-[#E5A952] font-semibold shadow-lg'
-                  : 'bg-black/60 text-white/90 border-white/15 hover:bg-black/80 hover:border-[#E5A952]/70'
+                  ? 'bg-[#E5A952] text-[#0c0b0d] border-[#E5A952] font-bold shadow-xl scale-105 z-20'
+                  : 'bg-black/78 text-white/95 border-white/20 hover:bg-black/90 hover:border-[#E5A952]/70 z-10'
               }`}
             >
-              <span>{b.label}</span>
+              <div className="flex items-center justify-between gap-2 text-[9px] font-mono-tech uppercase tracking-wider">
+                <span className="opacity-80">{b.brand}</span>
+                <span
+                  className={
+                    isSelected || isHovered
+                      ? 'px-1.5 py-0.2 rounded bg-black/20 text-[#0c0b0d] font-extrabold'
+                      : 'px-1.5 py-0.2 rounded bg-[#E5A952]/20 text-[#E5A952] font-bold'
+                  }
+                >
+                  ${b.priceUsd.toLocaleString()}
+                </span>
+              </div>
+              <div className="text-[10px] sm:text-[11px] font-bold whitespace-nowrap leading-tight mt-0.5">
+                {b.label}
+              </div>
+              <div
+                className={`text-[8.5px] font-mono-tech whitespace-nowrap leading-tight mt-0.5 ${
+                  isSelected || isHovered ? 'text-[#0c0b0d]/85 font-semibold' : 'text-white/65'
+                }`}
+              >
+                {b.subLabel}
+              </div>
             </button>
           );
         })}
       </div>
 
-      {/* Bottom-Right Compact Controls (Walk + Reset) */}
-      <div className="absolute bottom-5 right-5 z-20 flex items-center gap-2 pointer-events-auto">
-        <button
-          type="button"
-          onClick={() => setWalkMode((v) => !v)}
-          className={`h-9 px-3 rounded-lg border text-xs font-medium inline-flex items-center gap-1.5 backdrop-blur-md transition-colors cursor-pointer ${
-            walkMode
-              ? 'bg-[#E5A952] text-[#0c0b0d] border-[#E5A952] font-semibold'
-              : 'bg-black/55 text-white/90 border-white/15 hover:border-white/40'
-          }`}
-        >
-          <Footprints className="w-3.5 h-3.5" />
-          <span>{lang === 'hy' ? 'Քայլել' : 'Walk'}</span>
-        </button>
-
-        <button
-          type="button"
-          onClick={handleResetCamera}
-          className="h-9 px-3 rounded-lg border border-white/15 bg-black/55 backdrop-blur-md text-xs font-medium text-white/90 hover:border-white/40 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-        >
-          <RotateCcw className="w-3.5 h-3.5" />
-          <span className="hidden sm:inline">{lang === 'hy' ? 'Վերականգնել' : 'Reset'}</span>
-        </button>
-      </div>
-
-      {/* On-Screen Touch/Mouse Joystick when Walk Mode is active */}
-      {walkMode && (
-        <div className="absolute bottom-16 right-5 z-20 flex flex-col items-center gap-1.5 bg-black/75 backdrop-blur-md border border-white/15 p-2.5 rounded-xl text-white shadow-xl pointer-events-auto">
-          <div className="grid grid-cols-3 gap-1">
-            <div />
-            <button
-              type="button"
-              onPointerDown={() => {
-                walkInputRef.current = { x: 0, y: 1 };
-              }}
-              onPointerUp={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              onPointerLeave={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              className="w-9 h-9 rounded-lg border border-white/15 bg-white/10 active:bg-[#E5A952] active:text-black text-xs font-bold flex items-center justify-center cursor-pointer"
-              aria-label="Walk Forward"
-            >
-              ↑
-            </button>
-            <div />
-            <button
-              type="button"
-              onPointerDown={() => {
-                walkInputRef.current = { x: -1, y: 0 };
-              }}
-              onPointerUp={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              onPointerLeave={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              className="w-9 h-9 rounded-lg border border-white/15 bg-white/10 active:bg-[#E5A952] active:text-black text-xs font-bold flex items-center justify-center cursor-pointer"
-              aria-label="Step Left"
-            >
-              ←
-            </button>
-            <button
-              type="button"
-              onPointerDown={() => {
-                walkInputRef.current = { x: 0, y: -1 };
-              }}
-              onPointerUp={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              onPointerLeave={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              className="w-9 h-9 rounded-lg border border-white/15 bg-white/10 active:bg-[#E5A952] active:text-black text-xs font-bold flex items-center justify-center cursor-pointer"
-              aria-label="Walk Backward"
-            >
-              ↓
-            </button>
-            <button
-              type="button"
-              onPointerDown={() => {
-                walkInputRef.current = { x: 1, y: 0 };
-              }}
-              onPointerUp={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              onPointerLeave={() => {
-                walkInputRef.current = { x: 0, y: 0 };
-              }}
-              className="w-9 h-9 rounded-lg border border-white/15 bg-white/10 active:bg-[#E5A952] active:text-black text-xs font-bold flex items-center justify-center cursor-pointer"
-              aria-label="Step Right"
-            >
-              →
-            </button>
-          </div>
+      {/* Single Compact Bottom-Right 360° Walk & Turn Control Pad */}
+      <div className="pointer-events-auto absolute bottom-4 right-4 sm:bottom-5 sm:right-6 z-20 flex items-center gap-1.5">
+        <div className="inline-flex items-center rounded-xl border border-[#E5A952]/40 bg-black/80 backdrop-blur-md overflow-hidden shadow-xl text-white">
+          <button
+            type="button"
+            onPointerDown={() => {
+              walkInputRef.current.turn = 1;
+            }}
+            onPointerUp={() => {
+              walkInputRef.current.turn = 0;
+            }}
+            onPointerLeave={() => {
+              walkInputRef.current.turn = 0;
+            }}
+            className="h-9 px-2.5 hover:bg-white/15 hover:text-[#E5A952] inline-flex items-center justify-center text-xs cursor-pointer"
+            title={lang === 'hy' ? 'Պտույտ Ձախ (Q)' : 'Turn Left (Q)'}
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onPointerDown={() => {
+              walkInputRef.current.forward = 1;
+            }}
+            onPointerUp={() => {
+              walkInputRef.current.forward = 0;
+            }}
+            onPointerLeave={() => {
+              walkInputRef.current.forward = 0;
+            }}
+            className="h-9 px-2.5 border-l border-white/10 hover:bg-white/15 hover:text-[#E5A952] inline-flex items-center gap-1 text-xs font-bold cursor-pointer"
+            title={lang === 'hy' ? 'Քայլել Առաջ (W / ↑)' : 'Walk Forward (W / ↑)'}
+          >
+            <ArrowUp className="w-3.5 h-3.5 text-[#E5A952]" />
+            <span className="hidden sm:inline">{lang === 'hy' ? 'Քայլել' : 'Walk'}</span>
+          </button>
+          <button
+            type="button"
+            onPointerDown={() => {
+              walkInputRef.current.forward = -1;
+            }}
+            onPointerUp={() => {
+              walkInputRef.current.forward = 0;
+            }}
+            onPointerLeave={() => {
+              walkInputRef.current.forward = 0;
+            }}
+            className="h-9 px-2.5 border-l border-white/10 hover:bg-white/15 hover:text-[#E5A952] inline-flex items-center justify-center text-xs cursor-pointer"
+            title={lang === 'hy' ? 'Հետ (S / ↓)' : 'Walk Back (S / ↓)'}
+          >
+            <ArrowDown className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onPointerDown={() => {
+              walkInputRef.current.turn = -1;
+            }}
+            onPointerUp={() => {
+              walkInputRef.current.turn = 0;
+            }}
+            onPointerLeave={() => {
+              walkInputRef.current.turn = 0;
+            }}
+            className="h-9 px-2.5 border-l border-white/10 hover:bg-white/15 hover:text-[#E5A952] inline-flex items-center justify-center text-xs cursor-pointer"
+            title={lang === 'hy' ? 'Պտույտ Աջ (E)' : 'Turn Right (E)'}
+          >
+            <ArrowRight className="w-3.5 h-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={handleResetCamera}
+            className="h-9 px-2.5 border-l border-white/10 hover:bg-white/15 hover:text-[#E5A952] inline-flex items-center justify-center text-xs cursor-pointer"
+            title={lang === 'hy' ? 'Կենտրոն' : 'Reset Center'}
+          >
+            <RotateCcw className="w-3.5 h-3.5" />
+          </button>
         </div>
-      )}
+      </div>
     </div>
   );
 };

@@ -1168,7 +1168,7 @@ export function updateApplianceRigAnimation(
   }
 }
 
-function createStudioPlinthFloorTextures(darkMode: boolean): {
+export function createStudioPlinthFloorTextures(darkMode: boolean): {
   map: THREE.CanvasTexture;
   normalMap: THREE.CanvasTexture;
 } {
@@ -1232,7 +1232,7 @@ function createStudioPlinthFloorTextures(darkMode: boolean): {
   return { map, normalMap };
 }
 
-function createArchitecturalWoodWallTextures(darkMode: boolean): {
+export function createArchitecturalWoodWallTextures(darkMode: boolean): {
   map: THREE.CanvasTexture;
   normalMap: THREE.CanvasTexture;
 } {

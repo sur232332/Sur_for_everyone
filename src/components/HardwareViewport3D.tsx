@@ -146,9 +146,9 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
     camera: THREE.PerspectiveCamera;
     controls: OrbitControls;
     maxAnisotropy: number;
-    targetCamPos: THREE.Vector3 | null;
     requestRender: () => void;
     applyModel: (d: DeviceSpec, f: FinishOption) => void;
+    flyToPreset: (preset: CameraPreset, dist: number) => void;
     updateHighlight: (layer: ExplodedLayerId | null) => void;
     resetView: () => void;
   } | null>(null);
@@ -267,6 +267,7 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
     scene.add(modelGroup);
 
     let activeRig: DeviceRig | null = null;
+    let currentDeviceId = '';
     let targetCamPos: THREE.Vector3 | null = null;
     let frameId = 0;
     let renderBusy = false;
@@ -331,12 +332,22 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
         }
 
         if (targetCamPos) {
-          camera.position.x = THREE.MathUtils.damp(camera.position.x, targetCamPos.x, 7, dt);
-          camera.position.y = THREE.MathUtils.damp(camera.position.y, targetCamPos.y, 7, dt);
-          camera.position.z = THREE.MathUtils.damp(camera.position.z, targetCamPos.z, 7, dt);
-          if (camera.position.distanceTo(targetCamPos) < 0.03) {
+          controls.autoRotate = false;
+          camera.position.x = THREE.MathUtils.damp(camera.position.x, targetCamPos.x, 9, dt);
+          camera.position.y = THREE.MathUtils.damp(camera.position.y, targetCamPos.y, 9, dt);
+          camera.position.z = THREE.MathUtils.damp(camera.position.z, targetCamPos.z, 9, dt);
+          if (camera.position.distanceTo(targetCamPos) < 0.06) {
+            camera.position.copy(targetCamPos);
             targetCamPos = null;
           } else {
+            renderDirty = true;
+          }
+        } else {
+          const isIdle = now - lastUserInteraction > 3200;
+          controls.autoRotate =
+            (targetState.autoSpin || isIdle) && !isSoftwareGl && !prefersReducedMotion;
+          controls.autoRotateSpeed = 1.25;
+          if (controls.autoRotate) {
             renderDirty = true;
           }
         }
@@ -346,14 +357,6 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
           Math.abs(currentHinge - targetState.hingeDeg) > 0.15 ||
           Math.abs(currentFold - targetState.foldDeg) > 0.15
         ) {
-          renderDirty = true;
-        }
-
-        const isIdle = now - lastUserInteraction > 3200;
-        controls.autoRotate =
-          (targetState.autoSpin || isIdle) && !isSoftwareGl && !prefersReducedMotion;
-        controls.autoRotateSpeed = 1.4;
-        if (controls.autoRotate) {
           renderDirty = true;
         }
 
@@ -374,14 +377,23 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
 
     const resetView = () => {
       const dist =
-        device.category === 'laptop' || device.geometryType === 'foldable-trifold' ? 6.8 : 6.0;
+        device.category === 'laptop' || device.geometryType === 'foldable-trifold' ? 5.6 : 4.9;
       targetCamPos = getPresetCameraCoords('iso', dist);
+      controls.target.set(0, 0, 0);
+      requestRender();
+    };
+
+    const flyToPreset = (preset: CameraPreset, dist: number) => {
+      targetCamPos = getPresetCameraCoords(preset, dist);
       controls.target.set(0, 0, 0);
       requestRender();
     };
 
     const applyModel = (d: DeviceSpec, f: FinishOption) => {
       setModelReady(false);
+      const isNewDevice = currentDeviceId !== d.id;
+      currentDeviceId = d.id;
+
       if (activeRig) {
         modelGroup.remove(activeRig.root);
         disposeObject3D(activeRig.root);
@@ -394,8 +406,14 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
       shadowPlane.position.y = floorY;
       floorDisc.position.y = floorY - 0.02;
 
-      const dist = d.category === 'laptop' || d.geometryType === 'foldable-trifold' ? 6.8 : 6.0;
-      targetCamPos = getPresetCameraCoords('iso', dist);
+      if (isNewDevice) {
+        const dist = d.category === 'laptop' || d.geometryType === 'foldable-trifold' ? 5.6 : 4.9;
+        targetCamPos = null;
+        camera.position.copy(getPresetCameraCoords('iso', dist));
+        controls.target.set(0, 0, 0);
+        controls.update();
+      }
+
       activeRig.applyKinematics(
         stateRef.current.explode,
         stateRef.current.hingeDeg,
@@ -494,9 +512,9 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
       camera,
       controls,
       maxAnisotropy,
-      targetCamPos,
       requestRender,
       applyModel,
+      flyToPreset,
       updateHighlight,
       resetView,
     };
@@ -533,13 +551,9 @@ export const HardwareViewport3D: React.FC<HardwareViewport3DProps> = ({
     const handle = sceneHandleRef.current;
     if (!handle) return;
     const dist =
-      device.category === 'laptop' || device.geometryType === 'foldable-trifold' ? 6.8 : 6.0;
-    const nextPos = getPresetCameraCoords(cameraPreset, dist);
-    handle.camera.position.lerp(nextPos, 0.35);
-    handle.controls.target.set(0, 0, 0);
-    handle.controls.update();
-    handle.requestRender();
-  }, [cameraPreset, presetTrigger, device.category, device.geometryType]);
+      device.category === 'laptop' || device.geometryType === 'foldable-trifold' ? 5.6 : 4.9;
+    handle.flyToPreset(cameraPreset, dist);
+  }, [cameraPreset, presetTrigger]);
 
   useEffect(() => {
     sceneHandleRef.current?.updateHighlight(activeLayer);

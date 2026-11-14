@@ -262,6 +262,10 @@ export default function App() {
                     onNavigate={handleNavigate}
                     onOpenAR={handleOpenAR}
                     onAddToCart={handleAddToCart}
+                    onCompareDevice={handleCompareDevice}
+                    onRefreshPrice={(id) => void refreshDevicePrice(id, true)}
+                    cartCount={cartCount}
+                    onOpenCart={() => setCartOpen(true)}
                   />
                 )}
 
@@ -306,7 +310,16 @@ export default function App() {
                     onOpenGalleryView={() => handleNavigate('showroom')}
                     onNavigateDevice={(brand, deviceId) => handleNavigate(brand, deviceId)}
                     onOpenAR={handleOpenAR}
+                    onAddToCart={handleAddToCart}
+                    onCompareDevice={handleCompareDevice}
+                    favorites={favorites}
+                    onToggleFavorite={handleToggleFavorite}
+                    priceAlerts={priceAlerts}
+                    onTogglePriceAlert={handleTogglePriceAlert}
+                    onRefreshPrice={(id) => void refreshDevicePrice(id, true)}
                     devicePrices={prices}
+                    cartCount={cartCount}
+                    onOpenCart={() => setCartOpen(true)}
                   />
                 )}
               </ErrorBoundary>

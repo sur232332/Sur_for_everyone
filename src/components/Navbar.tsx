@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Globe, Heart, Menu, Moon, ShoppingBag, Sun, X } from 'lucide-react';
 import { Currency, Language, PageRoute } from '../types/hardware';
 import { TRANSLATIONS } from '../data/i18n';
+import { BrandLogo3D } from './BrandLogo3D';
 
 interface NavbarProps {
   route: PageRoute;
@@ -38,9 +39,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   const links: Array<{ id: PageRoute; label: string }> = [
     { id: 'home-guide', label: t.nav.homeGuide },
     { id: 'showroom', label: t.nav.showroom },
-    { id: 'samsung', label: t.nav.samsung },
-    { id: 'apple', label: t.nav.apple },
-    { id: 'huawei', label: t.nav.huawei },
     { id: 'compare', label: t.nav.compare },
   ];
 
@@ -57,15 +55,8 @@ export const Navbar: React.FC<NavbarProps> = ({
       style={{ backgroundColor: 'var(--bg-surface)' }}
     >
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-6">
-        {/* Zone 1: Single-line Brand Wordmark */}
-        <button
-          type="button"
-          onClick={() => handleLinkClick('home-guide')}
-          className="text-left font-bold tracking-[0.12em] sm:tracking-[0.18em] text-xs sm:text-base uppercase whitespace-nowrap shrink-0 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-[var(--accent)] cursor-pointer"
-          aria-label="Silicon Pulse 3D Walkthrough Home"
-        >
-          SILICON <span className="text-[var(--accent)]">PULSE</span>
-        </button>
+        {/* Zone 1: 3D Visual Brand Logo */}
+        <BrandLogo3D onClick={() => handleLinkClick('home-guide')} />
 
         {/* Zone 2: Clean Typographic Nav Links (Desktop) */}
         <nav
