@@ -2,7 +2,6 @@ import 'dotenv/config';
 import express from 'express';
 import fs from 'fs';
 import path from 'path';
-import { createServer as createViteServer } from 'vite';
 import { GoogleGenAI } from '@google/genai';
 
 function getGenAIClient(): GoogleGenAI | null {
@@ -635,6 +634,8 @@ async function startServer() {
   const PORT = Number(process.env.PORT) || 3002;
 
   if (process.env.NODE_ENV !== 'production') {
+    // Vite is loaded only for local development, so the Vercel /api function does not need it
+    const { createServer: createViteServer } = await import('vite');
     const vite = await createViteServer({
       server: { middlewareMode: true },
       appType: 'spa',
