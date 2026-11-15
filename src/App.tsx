@@ -134,10 +134,13 @@ export default function App() {
   // Sync browser back/forward for routes
   useEffect(() => {
     const onPopState = () => {
-      if (window.location.pathname === '/gallery') {
+      const path = window.location.pathname;
+      if (path === '/gallery') {
         setRoute('showroom');
-      } else {
+      } else if (path === '/home-guide') {
         setRoute('home-guide');
+      } else {
+        setRoute('motor-gallery');
       }
     };
     window.addEventListener('popstate', onPopState);

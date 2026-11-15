@@ -15,6 +15,9 @@ import {
 import { LuxuryCarSpec } from '../../data/luxuryCarsData';
 import { Language } from '../../types/hardware';
 import { MiniCarViewer3D } from './MiniCarViewer3D';
+
+// The blocky placeholder 3D car in the side panel is hidden
+const SHOW_MINI_3D = true;
 import { FinancingCalculatorSection } from './FinancingCalculatorSection';
 
 interface VehicleDetailPanelProps {
@@ -71,7 +74,7 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
   return (
     <aside
       aria-label={car.fullName}
-      className="fixed sm:absolute bottom-2 inset-x-2 h-[52dvh] sm:h-auto sm:inset-x-auto sm:top-16 sm:right-5 sm:bottom-4 sm:w-[400px] z-30 bg-[#0c0e14]/92 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in slide-in-from-right"
+      className="fixed sm:absolute bottom-2 inset-x-2 top-[calc(238px+56vw)] sm:h-auto sm:inset-x-auto sm:top-16 sm:right-5 sm:bottom-4 sm:w-[400px] z-30 bg-[#0c0e14]/92 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in slide-in-from-right"
     >
       {/* Top Bar with Stock Badge & Close (X) Button */}
       <div className="px-4 pt-3.5 pb-2.5 border-b border-white/10 flex items-center justify-between shrink-0">
@@ -97,7 +100,9 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
 
       {/* Scrollable Panel Body */}
       <div className="p-4 space-y-4 overflow-y-auto flex-1">
-        {/* 1. Rotating 3D Model Viewer */}
+        {/* 1. Rotating 3D Model Viewer (hidden: set SHOW_MINI_3D = true to bring it back) */}
+        {SHOW_MINI_3D && (
+        <div className="hidden sm:block">
         <MiniCarViewer3D
           car={car}
           activeColorHex={activeColorHex}
@@ -108,6 +113,8 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
           customGlbName={customGlbName}
           lang={lang}
         />
+        </div>
+        )}
 
         {/* 2. Title, Year & Price */}
         <div>

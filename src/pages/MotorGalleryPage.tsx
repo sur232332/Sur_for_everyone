@@ -54,6 +54,8 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
+  // Right detail panel can be hidden without leaving the car view
+  const [isDetailPanelHidden, setIsDetailPanelHidden] = useState<boolean>(false);
   const [selectedCarViewMode, setSelectedCarViewMode] = useState<'3d' | 'photo'>('photo');
   const [hoveredCarId, setHoveredCarId] = useState<string | null>(null);
   const [use8kDroneBackdrop, setUse8kDroneBackdrop] = useState<boolean>(true);
@@ -777,7 +779,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-[11px] font-mono-tech text-white/90 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+            className="hidden sm:inline-flex px-2.5 py-1.5 rounded-full bg-white/10 hover:bg-white/15 border border-white/15 text-[11px] font-mono-tech text-white/90 items-center gap-1.5 transition-colors cursor-pointer"
             title={
               lang === 'hy'
                 ? 'Բեռնել Ձեր սեփական .glb կամ .gltf 3D մեքենայի մոդելը'
@@ -803,9 +805,10 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
           <button
             type="button"
             onClick={() => setScheduleModalOpen(true)}
-            className="px-3.5 sm:px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 text-black font-semibold text-[11px] tracking-wider uppercase shadow-lg shadow-amber-500/20 hover:brightness-110 transition-all cursor-pointer"
+            className="px-3.5 sm:px-4 py-1.5 rounded-full bg-gradient-to-r from-amber-500 to-amber-400 text-black font-semibold text-[11px] tracking-wider uppercase whitespace-nowrap shadow-lg shadow-amber-500/20 hover:brightness-110 transition-all cursor-pointer"
           >
-            {lang === 'hy' ? 'ԱՄՐԱԳՐԵԼ ԱՅՑ' : 'SCHEDULE A VISIT'}
+            <span className="sm:hidden">{lang === 'hy' ? 'ԱՅՑ' : 'VISIT'}</span>
+            <span className="hidden sm:inline">{lang === 'hy' ? 'ԱՄՐԱԳՐԵԼ ԱՅՑ' : 'SCHEDULE A VISIT'}</span>
           </button>
         </div>
       </div>
@@ -816,8 +819,9 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
       {!selectedCar && (
         <>
           {use8kDroneBackdrop && (
-            <div className="absolute inset-0 z-10 overflow-x-auto overflow-y-hidden sm:overflow-hidden bg-[#090d14]">
-              <div className="relative min-w-[860px] sm:min-w-0 w-full h-full">
+            <div className="absolute inset-0 z-10 overflow-hidden bg-[#090d14] flex items-center sm:block">
+              {/* On phones the box keeps the photo's exact proportions, so all 6 cars are visible and the tap areas line up */}
+              <div className="relative w-full aspect-[1376/768] sm:aspect-auto sm:h-full">
               {/* Night / Golden Hour Dusk Layer */}
               <img
                 src="/kalbera-aerial-lot.jpg"
@@ -912,9 +916,9 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
           )}
 
           {/* Center Lot Title Overlay */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10 px-4 text-center">
-            <div className="bg-black/50 backdrop-blur-md px-6 sm:px-10 py-4 sm:py-5 rounded-2xl border border-white/12 shadow-2xl">
-              <h1 className="text-2xl sm:text-4xl md:text-5xl font-serif font-bold tracking-tight text-white drop-shadow-lg">
+          <div className="absolute inset-x-0 top-[112px] sm:top-0 sm:bottom-0 flex flex-col items-center justify-start sm:justify-center pointer-events-none z-10 px-4 text-center">
+            <div className="bg-black/50 backdrop-blur-md px-5 sm:px-10 py-3 sm:py-5 rounded-2xl border border-white/12 shadow-2xl">
+              <h1 className="text-xl sm:text-4xl md:text-5xl font-serif font-bold tracking-tight text-white drop-shadow-lg">
                 {lang === 'hy'
                   ? 'Էկզոտիկ և Լյուքս Դասի Ավտոմեքենաներ'
                   : 'Exotic & Luxury Pre-Owned Cars'}
@@ -924,7 +928,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
                   ? 'Երևան · Աննապոլիս, Մերիլենդ (3D Ավտոսրահ)'
                   : 'in Annapolis, MD'}
               </p>
-              <p className="mt-1.5 text-[11px] sm:text-xs text-white/75 max-w-md mx-auto">
+              <p className="hidden sm:block mt-1.5 text-[11px] sm:text-xs text-white/75 max-w-md mx-auto">
                 {lang === 'hy'
                   ? 'Սեղմեք կայանատեղիի ցանկացած մեքենայի վրա՝ 360° դիտելու, դռները բացելու, շարժիչը միացնելու և վարկը հաշվարկելու համար։'
                   : 'Click on any vehicle in the lot to explore specs, pricing, and financing.'}
@@ -1133,6 +1137,15 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
           </div>
 
           {/* 1 & 2. Slide-in Right Side Vehicle Detail & Financing Panel */}
+          {isDetailPanelHidden ? (
+            <button
+              type="button"
+              onClick={() => setIsDetailPanelHidden(false)}
+              className="fixed right-4 top-1/2 -translate-y-1/2 z-40 px-4 py-2.5 rounded-xl bg-black/70 hover:bg-black/85 border border-white/15 text-amber-300 text-sm font-semibold backdrop-blur-md shadow-xl cursor-pointer"
+            >
+              {lang === 'hy' ? '‹ Մանրամասներ' : '‹ Details'}
+            </button>
+          ) : (
           <VehicleDetailPanel
             car={selectedCar}
             lang={lang}
@@ -1149,10 +1162,11 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
             isCompared={compareIds.includes(selectedCar.id)}
             onToggleCompare={handleToggleCompare}
             onOpenScheduleModal={() => setScheduleModalOpen(true)}
-            onClose={() => focusOnCar(null)}
+            onClose={() => setIsDetailPanelHidden(true)}
             customGlbUrl={customModelUrls[selectedCar.id]}
             customGlbName={customModelNames[selectedCar.id]}
           />
+          )}
         </>
       )}
 

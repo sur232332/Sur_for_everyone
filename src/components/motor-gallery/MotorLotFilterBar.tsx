@@ -106,7 +106,7 @@ export const MotorLotFilterBar: React.FC<MotorLotFilterBarProps> = ({
       </div>
 
       {/* Color Dots */}
-      <div className="flex items-center gap-1.5">
+      <div className="hidden sm:flex items-center gap-1.5">
         {COLOR_DOTS.map((dot) => {
           const active = selectedColor === dot.id;
           return (

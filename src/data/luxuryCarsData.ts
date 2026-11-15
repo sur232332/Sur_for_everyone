@@ -22,8 +22,14 @@ export interface LuxuryCarSpec {
   heroPhotoUrl?: string;
   rearPhotoUrl?: string;
   spinFrames?: string[];
+  /** Optional second 360° frame set that shows the trunk / rear (used by the Rear button) */
+  trunkSpinFrames?: string[];
+  /** If the spin frames cover only part of a turn (e.g. 145 = front to rear three-quarter), set it here. Drag stops at the ends and auto-spin goes back and forth. */
+  spinArcDeg?: number;
   spinVideoUrl?: string;
   doorsSpinVideoUrl?: string;
+  /** 360° frame set with doors, frunk and engine cover open (used by the Open doors button) */
+  doorsSpinFrames?: string[];
   doorsOpenPhotoUrl?: string;
   /** Optional real 3D model (.glb) placed in /public/models, e.g. '/models/porsche-911-gt3.glb' */
   glbUrl?: string;
@@ -90,8 +96,9 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     enginePitch: 68,
     heroPhotoUrl: '/cars/porsche-911-gt3-studio.jpg',
     rearPhotoUrl: '/cars/porsche-911-gt3-rear.jpg',
-    spinFrames: spinFrameUrls('porsche-a', 72),
-    doorsSpinVideoUrl: '/cars/porsche-911-gt3-doors-360.mp4',
+    spinFrames: spinFrameUrls('porsche-360c', 100),
+    trunkSpinFrames: spinFrameUrls('porsche-trunk', 99),
+    doorsSpinFrames: spinFrameUrls('porsche-doors', 100),
     doorsOpenPhotoUrl: '/cars/porsche-911-gt3-open.jpg',
     droneHotspot: {
       left: '30.2%',

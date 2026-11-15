@@ -31,7 +31,6 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   isEngineRunning,
   lang,
 }) => {
-  const frames = car.spinFrames && car.spinFrames.length > 0 ? car.spinFrames : null;
   const hasDoorsVideo = Boolean(car.doorsSpinVideoUrl);
   const hasSpinVideo = Boolean(car.spinVideoUrl);
 
@@ -53,6 +52,19 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   const [cacheProgress, setCacheProgress] = useState<number>(0);
   const [framesReady, setFramesReady] = useState<boolean>(false);
   const [showRear, setShowRear] = useState<boolean>(false);
+
+  const baseFrames = car.spinFrames && car.spinFrames.length > 0 ? car.spinFrames : null;
+  const trunkFrames =
+    car.trunkSpinFrames && car.trunkSpinFrames.length > 0 ? car.trunkSpinFrames : null;
+  const doorsFrames =
+    car.doorsSpinFrames && car.doorsSpinFrames.length > 0 ? car.doorsSpinFrames : null;
+  const frames =
+    isOpenMode && doorsFrames ? doorsFrames : showRear && trunkFrames ? trunkFrames : baseFrames;
+  // Partial-arc frame sets (e.g. 145°): no wrap-around, drag is clamped, auto-spin ping-pongs
+  const arcDeg =
+    frames && frames === baseFrames && car.spinArcDeg && car.spinArcDeg < 360 ? car.spinArcDeg : 360;
+  const isPartialArc = arcDeg < 360;
+  const spinDirRef = useRef<1 | -1>(1);
 
   const dragStartRef = useRef<{ x: number; yaw: number } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
@@ -89,6 +101,8 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
     if (car.rearPhotoUrl) urlsToPreload.push(car.rearPhotoUrl);
     if (car.doorsOpenPhotoUrl) urlsToPreload.push(car.doorsOpenPhotoUrl);
     if (car.spinFrames) urlsToPreload.push(...car.spinFrames);
+    if (car.trunkSpinFrames) urlsToPreload.push(...car.trunkSpinFrames);
+    if (car.doorsSpinFrames) urlsToPreload.push(...car.doorsSpinFrames);
 
     urlsToPreload.forEach((src) => {
       const img = new Image();
@@ -261,13 +275,30 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
 
   // Auto-spin fallback for 8-frame image turntable
   useEffect(() => {
-    if (isVideoMode || !autoSpin || !frames || isOpenMode) return;
+    if (isVideoMode || !autoSpin || !frames || (isOpenMode && !doorsFrames)) return;
+    if (isPartialArc) {
+      const stepDeg = arcDeg / Math.max(1, frames.length - 1);
+      const id = window.setInterval(() => {
+        setYawDeg((prev) => {
+          let next = prev + stepDeg * spinDirRef.current;
+          if (next >= arcDeg) {
+            next = arcDeg;
+            spinDirRef.current = -1;
+          } else if (next <= 0) {
+            next = 0;
+            spinDirRef.current = 1;
+          }
+          return next;
+        });
+      }, 70);
+      return () => window.clearInterval(id);
+    }
     const stepDeg = 360 / frames.length;
     const id = window.setInterval(() => {
       setYawDeg((prev) => (prev + stepDeg) % 360);
     }, frames.length > 12 ? 50 : 650);
     return () => window.clearInterval(id);
-  }, [isVideoMode, autoSpin, frames, isOpenMode]);
+  }, [isVideoMode, autoSpin, frames, isOpenMode, doorsFrames, isPartialArc, arcDeg]);
 
   const scrubVideoFallback = useCallback(
     (nextYaw: number) => {
@@ -298,7 +329,11 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!isDragging || !dragStartRef.current) return;
       const dx = e.clientX - dragStartRef.current.x;
-      const nextYaw = (((dragStartRef.current.yaw + dx * 0.45) % 360) + 360) % 360;
+      const rawYaw = dragStartRef.current.yaw + dx * 0.45;
+      const nextYaw =
+        isPartialArc && !isVideoMode
+          ? Math.min(Math.max(rawYaw, 0), arcDeg)
+          : ((rawYaw % 360) + 360) % 360;
       setYawDeg(nextYaw);
       if (isVideoMode) {
         if (framesReady) {
@@ -308,7 +343,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
         }
       }
     },
-    [isDragging, isVideoMode, framesReady, drawCachedFrame, scrubVideoFallback]
+    [isDragging, isVideoMode, framesReady, drawCachedFrame, scrubVideoFallback, isPartialArc, arcDeg]
   );
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -326,18 +361,24 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   }, []);
 
   const normalizedYaw = ((yawDeg % 360) + 360) % 360;
-  const isOpenImageActive = !isVideoMode && isOpenMode && Boolean(car.doorsOpenPhotoUrl);
+  const isOpenImageActive =
+    !isVideoMode && isOpenMode && !doorsFrames && Boolean(car.doorsOpenPhotoUrl);
 
   let activeFrameIndex = 0;
   let activePhotoSrc = car.heroPhotoUrl || '';
 
-  if (showRear && !isVideoMode && car.rearPhotoUrl) {
+  if (showRear && !isVideoMode && !trunkFrames && car.rearPhotoUrl) {
     activePhotoSrc = car.rearPhotoUrl;
   } else if (isOpenImageActive && car.doorsOpenPhotoUrl) {
     activePhotoSrc = car.doorsOpenPhotoUrl;
   } else if (frames) {
-    const sectorSize = 360 / frames.length;
-    activeFrameIndex = Math.round(normalizedYaw / sectorSize) % frames.length;
+    if (isPartialArc) {
+      const clamped = Math.min(Math.max(yawDeg, 0), arcDeg);
+      activeFrameIndex = Math.round((clamped / arcDeg) * (frames.length - 1));
+    } else {
+      const sectorSize = 360 / frames.length;
+      activeFrameIndex = Math.round(normalizedYaw / sectorSize) % frames.length;
+    }
     activePhotoSrc = frames[activeFrameIndex] || car.heroPhotoUrl || '';
   } else if (car.rearPhotoUrl) {
     const isRearView = normalizedYaw >= 90 && normalizedYaw <= 270;
@@ -363,7 +404,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
     >
       {/* Flat, bright, undistorted photorealistic stage — upper half on mobile above bottom sheet */}
       <div
-        className="w-full h-[46dvh] sm:h-full mt-12 sm:mt-0 relative transition-transform duration-200 ease-out"
+        className="w-full h-[56vw] sm:h-full mt-[120px] sm:mt-0 relative transition-transform duration-200 ease-out"
         style={{
           transform: `scale(${zoom.toFixed(3)})`,
         }}
@@ -409,7 +450,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
       </div>
 
       {/* Doors / Trunk Open indicator badge */}
-      {(isOpenImageActive || (isOpenMode && hasDoorsVideo)) && (
+      {(isOpenImageActive || (isOpenMode && (hasDoorsVideo || Boolean(doorsFrames)))) && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 z-20 flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-amber-500/90 text-zinc-950 font-semibold text-xs shadow-xl">
           <DoorOpen className="w-4 h-4" />
           <span>
@@ -426,7 +467,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
       )}
 
       {/* Top-right HUD: 360° controls + zoom (offset left of right detail panel on desktop, compact on mobile) */}
-      <div className="absolute top-[calc(46dvh-8px)] sm:top-24 right-2 sm:right-4 lg:right-[440px] z-20 flex flex-row sm:flex-col items-center sm:items-end gap-1.5 sm:gap-2">
+      <div className="absolute top-[calc(128px+56vw)] sm:top-24 right-2 sm:right-4 lg:right-[440px] z-20 flex flex-row sm:flex-col items-center sm:items-end gap-1.5 sm:gap-2">
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-950/85 border border-white/15 backdrop-blur-md text-[11px] text-white/90 shadow-lg">
           <Compass className="w-3.5 h-3.5 text-amber-400" />
           <span className="font-mono font-semibold">{Math.round(normalizedYaw)}°</span>
@@ -481,7 +522,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
             </>
           )}
 
-          {!isVideoMode && frames && car.rearPhotoUrl && (
+          {!isVideoMode && frames && (car.rearPhotoUrl || trunkFrames) && (
             <>
               <span className="text-white/30">•</span>
               <button
