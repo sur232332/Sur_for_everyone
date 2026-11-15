@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { ImagePlus, X } from 'lucide-react';
 import { PHOTO_BUCKET, supabase } from '../lib/supabase';
-import { LISTING_CATEGORIES, ListingCategory } from '../data/listings';
+import { LISTING_CATEGORIES, Listing, ListingCategory } from '../data/listings';
 import type { Currency, Language } from '../types/hardware';
 
 interface AddListingModalProps {
@@ -10,6 +10,8 @@ interface AddListingModalProps {
   /** Same rates the catalog uses, to turn the typed price into USD */
   rateFromUsd: number;
   userId: string;
+  /** When set, the form edits this listing instead of creating a new one */
+  existing?: Listing;
   onClose: () => void;
   onCreated: () => void;
 }
@@ -17,24 +19,32 @@ interface AddListingModalProps {
 const MAX_PHOTOS = 8;
 const MAX_BYTES = 5 * 1024 * 1024;
 
-/** "Post a listing" form: text fields + up to 8 photos uploaded to Supabase Storage */
+/** "Post a listing" / "Edit listing" form: text fields + up to 8 photos in Supabase Storage */
 export const AddListingModal: React.FC<AddListingModalProps> = ({
   lang,
   currency,
   rateFromUsd,
   userId,
+  existing,
   onClose,
   onCreated,
 }) => {
   const hy = lang === 'hy';
-  const [category, setCategory] = useState<ListingCategory>('cars');
-  const [title, setTitle] = useState('');
-  const [price, setPrice] = useState('');
-  const [city, setCity] = useState(hy ? 'Երևան' : 'Yerevan');
-  const [brand, setBrand] = useState('');
-  const [year, setYear] = useState('');
-  const [phone, setPhone] = useState('');
-  const [description, setDescription] = useState('');
+  const isEdit = Boolean(existing?.dbId);
+  const [category, setCategory] = useState<ListingCategory>(existing?.category ?? 'cars');
+  const [title, setTitle] = useState(existing?.title.en ?? '');
+  const [price, setPrice] = useState(
+    existing ? String(Math.round(existing.priceUsd * rateFromUsd)) : ''
+  );
+  const [city, setCity] = useState(existing?.city.en ?? (hy ? 'Երևան' : 'Yerevan'));
+  const [brand, setBrand] = useState(existing?.brand ?? '');
+  const [year, setYear] = useState(existing?.year ? String(existing.year) : '');
+  const [phone, setPhone] = useState(existing?.phone ?? '');
+  const [description, setDescription] = useState(existing?.description ?? '');
+  // Photos already saved (edit mode) + new files picked now
+  const [keptPhotos, setKeptPhotos] = useState<string[]>(
+    existing && existing.viewer.type === 'photos' ? existing.viewer.photos : []
+  );
   const [files, setFiles] = useState<File[]>([]);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +56,9 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
     if (tooBig) {
       setError(hy ? `«${tooBig.name}» նկարը 5 MB-ից մեծ է` : `"${tooBig.name}" is larger than 5 MB`);
     }
-    setFiles((prev) => [...prev, ...picked.filter((f) => f.size <= MAX_BYTES)].slice(0, MAX_PHOTOS));
+    setFiles((prev) =>
+      [...prev, ...picked.filter((f) => f.size <= MAX_BYTES)].slice(0, MAX_PHOTOS - keptPhotos.length)
+    );
   };
 
   const submit = async (e: React.FormEvent) => {
@@ -57,14 +69,14 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
       setError(hy ? 'Նշեք գինը' : 'Enter a price');
       return;
     }
-    if (files.length === 0) {
+    if (files.length + keptPhotos.length === 0) {
       setError(hy ? 'Ավելացրեք առնվազն 1 նկար' : 'Add at least 1 photo');
       return;
     }
     setBusy(true);
     try {
       // 1. Upload photos into this user's own folder
-      const photoUrls: string[] = [];
+      const photoUrls: string[] = [...keptPhotos];
       for (let i = 0; i < files.length; i++) {
         const file = files[i];
         const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg';
@@ -76,8 +88,8 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
         photoUrls.push(supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl);
       }
 
-      // 2. Save the listing row
-      const { error: insErr } = await supabase.from('listings').insert({
+      // 2. Save the listing row (new one, or update the existing one)
+      const row = {
         category,
         title: title.trim(),
         description: description.trim(),
@@ -87,8 +99,21 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
         year: year ? Number(year) : null,
         phone: phone.trim() || null,
         photos: photoUrls,
-      });
-      if (insErr) throw insErr;
+      };
+      const { error: saveErr } =
+        isEdit && existing?.dbId
+          ? await supabase.from('listings').update(row).eq('id', existing.dbId)
+          : await supabase.from('listings').insert(row);
+      if (saveErr) throw saveErr;
+
+      // 3. In edit mode, delete photos the user removed from storage
+      if (isEdit && existing && existing.viewer.type === 'photos') {
+        const removed = existing.viewer.photos
+          .filter((url) => !keptPhotos.includes(url))
+          .map((url) => url.split(`/${PHOTO_BUCKET}/`)[1])
+          .filter((p): p is string => Boolean(p));
+        if (removed.length) await supabase.storage.from(PHOTO_BUCKET).remove(removed);
+      }
 
       onCreated();
       onClose();
@@ -118,7 +143,9 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
           <X className="w-4 h-4" />
         </button>
 
-        <h2 className="text-lg font-bold">{hy ? 'Նոր հայտարարություն' : 'New listing'}</h2>
+        <h2 className="text-lg font-bold">
+          {isEdit ? (hy ? 'Խմբագրել հայտարարությունը' : 'Edit listing') : hy ? 'Նոր հայտարարություն' : 'New listing'}
+        </h2>
 
         <div className="flex gap-2">
           {LISTING_CATEGORIES.map((c) => (
@@ -189,9 +216,22 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
 
         <div className="space-y-1.5">
           <div className={labelCls}>
-            {hy ? 'Նկարներ' : 'Photos'} ({files.length}/{MAX_PHOTOS})
+            {hy ? 'Նկարներ' : 'Photos'} ({keptPhotos.length + files.length}/{MAX_PHOTOS})
           </div>
           <div className="grid grid-cols-4 gap-2">
+            {keptPhotos.map((url) => (
+              <div key={url} className="relative aspect-square rounded-lg overflow-hidden bg-[var(--bg-elevated)]">
+                <img src={url} alt="" className="w-full h-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => setKeptPhotos((prev) => prev.filter((u) => u !== url))}
+                  className="absolute top-1 right-1 p-0.5 rounded-full bg-black/70 text-white cursor-pointer"
+                  aria-label="Remove photo"
+                >
+                  <X className="w-3 h-3" />
+                </button>
+              </div>
+            ))}
             {files.map((f, i) => (
               <div key={`${f.name}-${i}`} className="relative aspect-square rounded-lg overflow-hidden bg-[var(--bg-elevated)]">
                 <img src={URL.createObjectURL(f)} alt="" className="w-full h-full object-cover" />
@@ -205,7 +245,7 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
                 </button>
               </div>
             ))}
-            {files.length < MAX_PHOTOS && (
+            {keptPhotos.length + files.length < MAX_PHOTOS && (
               <label className="aspect-square rounded-lg border-2 border-dashed border-[var(--border-hairline)] flex flex-col items-center justify-center text-[var(--text-secondary)] text-[11px] cursor-pointer hover:border-[var(--accent)]">
                 <ImagePlus className="w-5 h-5 mb-1" />
                 {hy ? 'Ավելացնել' : 'Add'}
@@ -231,7 +271,17 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
           disabled={busy}
           className="w-full h-11 rounded-lg bg-[var(--accent)] text-[#080709] font-bold text-sm disabled:opacity-60 cursor-pointer"
         >
-          {busy ? (hy ? 'Տեղադրվում է…' : 'Posting…') : hy ? 'Տեղադրել' : 'Post listing'}
+          {busy
+            ? hy
+              ? 'Պահպանվում է…'
+              : 'Saving…'
+            : isEdit
+              ? hy
+                ? 'Պահպանել փոփոխությունները'
+                : 'Save changes'
+              : hy
+                ? 'Տեղադրել'
+                : 'Post listing'}
         </button>
       </form>
     </div>

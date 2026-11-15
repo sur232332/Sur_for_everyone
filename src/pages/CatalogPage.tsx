@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, SlidersHorizontal, Sparkles, X, MapPin, Plus, LogIn, LogOut, Phone, Trash2, User } from 'lucide-react';
+import { Search, SlidersHorizontal, Sparkles, X, MapPin, Plus, LogIn, LogOut, Phone, Trash2, User, Pencil } from 'lucide-react';
 import { supabase, DbListing } from '../lib/supabase';
 import { AuthModal } from '../components/AuthModal';
 import { AddListingModal } from '../components/AddListingModal';
@@ -48,6 +48,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
   const [authOpen, setAuthOpen] = useState(false);
   const [addOpen, setAddOpen] = useState(false);
   const [onlyMine, setOnlyMine] = useState(false);
+  const [editListing, setEditListing] = useState<Listing | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
 
   const loadDbListings = useCallback(async () => {
@@ -477,6 +478,19 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
               {userId && photoListing.ownerId === userId && (
                 <button
                   type="button"
+                  onClick={() => {
+                    setEditListing(photoListing);
+                    setPhotoListing(null);
+                  }}
+                  className="h-9 px-3 rounded-lg bg-white/15 text-white text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Pencil className="w-4 h-4" />
+                  {hy ? 'Խմբագրել' : 'Edit'}
+                </button>
+              )}
+              {userId && photoListing.ownerId === userId && (
+                <button
+                  type="button"
                   onClick={() => void handleDelete(photoListing)}
                   className="h-9 px-3 rounded-lg bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                 >
@@ -513,6 +527,17 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
           rateFromUsd={RATES[currency].rate}
           userId={userId}
           onClose={() => setAddOpen(false)}
+          onCreated={() => void loadDbListings()}
+        />
+      )}
+      {editListing && userId && (
+        <AddListingModal
+          lang={lang}
+          currency={currency}
+          rateFromUsd={RATES[currency].rate}
+          userId={userId}
+          existing={editListing}
+          onClose={() => setEditListing(null)}
           onCreated={() => void loadDbListings()}
         />
       )}
