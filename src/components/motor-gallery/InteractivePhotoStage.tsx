@@ -13,8 +13,15 @@ interface InteractivePhotoStageProps {
   lang: Language;
 }
 
+// Legacy 8-frame sets start on frame #8 (315°); dense frame sets (from ffmpeg) start at 0°
+const homeYawFor = (frameCount?: number) => (frameCount && frameCount <= 8 ? 315 : 0);
+
+// Set to true to show the 0°/45°/90°… quick-angle pills again
+const SHOW_ANGLE_PILLS = false;
+
 const ANGLE_LABELS = ['0°', '45°', '90°', '135°', '180°', '225°', '270°', '315°'];
-const TARGET_CACHE_FRAMES = 60;
+const getTargetCacheFrames = () =>
+  typeof window !== 'undefined' && window.innerWidth < 768 ? 36 : 60;
 
 export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   car,
@@ -45,26 +52,33 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   const [videoDuration, setVideoDuration] = useState<number>(8);
   const [cacheProgress, setCacheProgress] = useState<number>(0);
   const [framesReady, setFramesReady] = useState<boolean>(false);
+  const [showRear, setShowRear] = useState<boolean>(false);
 
   const dragStartRef = useRef<{ x: number; yaw: number } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const capturedFramesRef = useRef<HTMLCanvasElement[]>([]);
   const isCapturingRef = useRef<boolean>(false);
+  const autoSpinRef = useRef<boolean>(false);
+  autoSpinRef.current = autoSpin;
 
   // Reset angle and zoom when switching cars
   useEffect(() => {
-    setYawDeg(car.spinVideoUrl ? 0 : car.spinFrames?.length ? 315 : 0);
+    setYawDeg(car.spinVideoUrl ? 0 : homeYawFor(car.spinFrames?.length));
     setZoom(1.0);
     setAutoSpin(false);
+    setShowRear(false);
   }, [car.id, car.spinVideoUrl, car.spinFrames]);
 
   // When toggling doors/trunk on a car with doorsSpinVideoUrl, auto-play so the user sees doors & frunk open smoothly
   useEffect(() => {
-    if (isOpenMode && hasDoorsVideo && videoRef.current) {
-      videoRef.current.currentTime = 0;
+    if (isOpenMode && hasDoorsVideo) {
       setYawDeg(0);
       setAutoSpin(true);
+      if (videoRef.current) {
+        videoRef.current.currentTime = 0;
+        videoRef.current.play().catch(() => {});
+      }
     }
   }, [isOpenMode, hasDoorsVideo]);
 
@@ -112,7 +126,8 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
       const dur = video.duration;
       setVideoDuration(dur);
 
-      const collected: (HTMLCanvasElement | null)[] = new Array(TARGET_CACHE_FRAMES).fill(null);
+      const targetFrames = getTargetCacheFrames();
+      const collected: (HTMLCanvasElement | null)[] = new Array(targetFrames).fill(null);
       let capturedCount = 0;
 
       video.currentTime = 0;
@@ -128,23 +143,25 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
         if (cancelled) return;
         if (video.readyState >= 2 && video.videoWidth > 0 && video.videoHeight > 0) {
           const progress = Math.min(0.999, Math.max(0, video.currentTime / dur));
-          const slot = Math.floor(progress * TARGET_CACHE_FRAMES);
+          const slot = Math.floor(progress * targetFrames);
           if (!collected[slot]) {
+            const maxW = typeof window !== 'undefined' && window.innerWidth < 768 ? 960 : video.videoWidth;
+            const scale = Math.min(1, maxW / video.videoWidth);
             const off = document.createElement('canvas');
-            off.width = video.videoWidth;
-            off.height = video.videoHeight;
+            off.width = Math.round(video.videoWidth * scale);
+            off.height = Math.round(video.videoHeight * scale);
             const offCtx = off.getContext('2d');
             if (offCtx) {
               offCtx.drawImage(video, 0, 0, off.width, off.height);
               collected[slot] = off;
               capturedCount++;
-              setCacheProgress(Math.round((capturedCount / TARGET_CACHE_FRAMES) * 100));
+              setCacheProgress(Math.round((capturedCount / targetFrames) * 100));
             }
           }
         }
 
-        // Stop once we have at least 48 frames or ~2.2 seconds elapsed
-        if (capturedCount >= TARGET_CACHE_FRAMES - 4) {
+        // Stop once we have most frames or ~2.5 seconds elapsed
+        if (capturedCount >= targetFrames - 3) {
           finishCapture();
           return;
         }
@@ -155,9 +172,9 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
         if (cancelled) return;
         window.cancelAnimationFrame(rafId);
         video.playbackRate = 1.0;
-        if (!autoSpin) {
+        if (!autoSpinRef.current) {
           video.pause();
-          video.currentTime = 0;
+          video.currentTime = isOpenMode ? Math.min(dur * 0.45, Math.max(0, dur - 0.1)) : 0;
         }
         // Fill any missing slots with nearest captured frame
         const compact: HTMLCanvasElement[] = [];
@@ -170,6 +187,9 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
           capturedFramesRef.current = compact;
           setFramesReady(true);
           setCacheProgress(100);
+          if (isOpenMode && !autoSpinRef.current) {
+            setYawDeg(160);
+          }
         }
         isCapturingRef.current = false;
       };
@@ -245,7 +265,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
     const stepDeg = 360 / frames.length;
     const id = window.setInterval(() => {
       setYawDeg((prev) => (prev + stepDeg) % 360);
-    }, 650);
+    }, frames.length > 12 ? 50 : 650);
     return () => window.clearInterval(id);
   }, [isVideoMode, autoSpin, frames, isOpenMode]);
 
@@ -265,6 +285,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
     (e: React.PointerEvent<HTMLDivElement>) => {
       if ((e.target as HTMLElement).closest('button')) return;
       setAutoSpin(false);
+      setShowRear(false);
       if (videoRef.current && !isCapturingRef.current) videoRef.current.pause();
       setIsDragging(true);
       dragStartRef.current = { x: e.clientX, yaw: yawDeg };
@@ -310,7 +331,9 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   let activeFrameIndex = 0;
   let activePhotoSrc = car.heroPhotoUrl || '';
 
-  if (isOpenImageActive && car.doorsOpenPhotoUrl) {
+  if (showRear && !isVideoMode && car.rearPhotoUrl) {
+    activePhotoSrc = car.rearPhotoUrl;
+  } else if (isOpenImageActive && car.doorsOpenPhotoUrl) {
     activePhotoSrc = car.doorsOpenPhotoUrl;
   } else if (frames) {
     const sectorSize = 360 / frames.length;
@@ -322,8 +345,8 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   }
 
   const brightnessClass = lotDayMode
-    ? 'brightness-[1.24] contrast-[1.04]'
-    : 'brightness-[1.12] contrast-[1.03]';
+    ? 'brightness-[1.42] contrast-[1.06] saturate-[1.14]'
+    : 'brightness-[1.32] contrast-[1.06] saturate-[1.12]';
 
   const showCanvasLayer = isVideoMode && framesReady && !autoSpin;
 
@@ -334,27 +357,17 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onWheel={handleWheel}
-      className={`absolute inset-0 z-10 overflow-hidden select-none bg-zinc-900 ${
+      className={`absolute inset-0 z-10 overflow-hidden select-none touch-none bg-zinc-900 ${
         isDragging ? 'cursor-grabbing' : 'cursor-grab'
       }`}
     >
-      {/* Flat, bright, undistorted photorealistic stage — zoom only, never tilted */}
+      {/* Flat, bright, undistorted photorealistic stage — upper half on mobile above bottom sheet */}
       <div
-        className="w-full h-full relative transition-transform duration-200 ease-out"
+        className="w-full h-[46dvh] sm:h-full mt-12 sm:mt-0 relative transition-transform duration-200 ease-out"
         style={{
           transform: `scale(${zoom.toFixed(3)})`,
         }}
       >
-        {/* Base photo layer so it NEVER flashes dark */}
-        {car.heroPhotoUrl && (
-          <img
-            src={car.heroPhotoUrl}
-            alt={car.fullName}
-            draggable={false}
-            className={`absolute inset-0 w-full h-full object-cover pointer-events-none ${brightnessClass}`}
-          />
-        )}
-
         {isVideoMode && activeVideoSrc ? (
           <>
             <video
@@ -362,6 +375,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
               ref={videoRef}
               src={activeVideoSrc}
               poster={car.heroPhotoUrl}
+              autoPlay={autoSpin}
               muted
               loop
               playsInline
@@ -371,13 +385,13 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
                 if (dur && Number.isFinite(dur)) setVideoDuration(dur);
               }}
               onTimeUpdate={handleVideoTimeUpdate}
-              className={`absolute inset-0 w-full h-full object-cover pointer-events-none ${brightnessClass} ${
+              className={`absolute inset-0 w-full h-full object-contain sm:object-cover pointer-events-none ${brightnessClass} ${
                 isEngineRunning ? 'animate-[pulse_0.16s_ease-in-out_infinite]' : ''
               } ${showCanvasLayer ? 'opacity-0' : 'opacity-100'}`}
             />
             <canvas
               ref={canvasRef}
-              className={`absolute inset-0 w-full h-full object-cover pointer-events-none ${brightnessClass} ${
+              className={`absolute inset-0 w-full h-full object-contain sm:object-cover pointer-events-none ${brightnessClass} ${
                 isEngineRunning ? 'animate-[pulse_0.16s_ease-in-out_infinite]' : ''
               } ${showCanvasLayer ? 'opacity-100' : 'opacity-0'}`}
             />
@@ -387,7 +401,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
             src={activePhotoSrc}
             alt={car.fullName}
             draggable={false}
-            className={`absolute inset-0 w-full h-full object-cover transition-all duration-300 ${brightnessClass} ${
+            className={`absolute inset-0 w-full h-full object-contain sm:object-cover pointer-events-none ${brightnessClass} ${
               isEngineRunning ? 'animate-[pulse_0.16s_ease-in-out_infinite]' : ''
             }`}
           />
@@ -411,8 +425,8 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
         </div>
       )}
 
-      {/* Top-right HUD: 360° controls + zoom (offset left of right detail panel on desktop) */}
-      <div className="absolute top-24 right-4 lg:right-[440px] z-20 flex flex-col items-end gap-2">
+      {/* Top-right HUD: 360° controls + zoom (offset left of right detail panel on desktop, compact on mobile) */}
+      <div className="absolute top-[calc(46dvh-8px)] sm:top-24 right-2 sm:right-4 lg:right-[440px] z-20 flex flex-row sm:flex-col items-center sm:items-end gap-1.5 sm:gap-2">
         <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-zinc-950/85 border border-white/15 backdrop-blur-md text-[11px] text-white/90 shadow-lg">
           <Compass className="w-3.5 h-3.5 text-amber-400" />
           <span className="font-mono font-semibold">{Math.round(normalizedYaw)}°</span>
@@ -429,7 +443,10 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
               <span className="text-white/30">•</span>
               <button
                 type="button"
-                onClick={() => setAutoSpin((v) => !v)}
+                onClick={() => {
+                  setShowRear(false);
+                  setAutoSpin((v) => !v);
+                }}
                 className={`flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-semibold transition-colors cursor-pointer ${
                   autoSpin
                     ? 'bg-amber-500 text-zinc-950'
@@ -463,16 +480,41 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
               </button>
             </>
           )}
+
+          {!isVideoMode && frames && car.rearPhotoUrl && (
+            <>
+              <span className="text-white/30">•</span>
+              <button
+                type="button"
+                onClick={() => {
+                  setAutoSpin(false);
+                  setShowRear((v) => !v);
+                }}
+                className={`font-medium cursor-pointer ${
+                  showRear ? 'text-amber-300' : 'text-white/80 hover:text-white'
+                }`}
+              >
+                {showRear
+                  ? lang === 'hy'
+                    ? 'Առջևի'
+                    : 'Front'
+                  : lang === 'hy'
+                    ? 'Հետևի'
+                    : 'Rear'}
+              </button>
+            </>
+          )}
         </div>
 
-        {/* 8-Angle Turntable Quick Selector Pills */}
-        {(isVideoMode || frames) && (
-          <div className="flex flex-wrap justify-end gap-1 max-w-[260px] p-1.5 rounded-2xl bg-zinc-950/80 border border-white/15 backdrop-blur-md shadow-lg">
+        {/* 8-Angle Turntable Quick Selector Pills (hidden on narrow mobile to keep stage clean) */}
+        {SHOW_ANGLE_PILLS && (isVideoMode || frames) && (
+          <div className="hidden sm:flex flex-wrap justify-end gap-1 max-w-[260px] p-1.5 rounded-2xl bg-zinc-950/80 border border-white/15 backdrop-blur-md shadow-lg">
             {ANGLE_LABELS.map((label, idx) => {
               const targetYaw = idx * 45;
+              const angleDiff = Math.abs(((normalizedYaw - targetYaw + 540) % 360) - 180);
               const isSelected = isVideoMode
-                ? Math.abs(normalizedYaw - targetYaw) < 22.5
-                : !isOpenImageActive && activeFrameIndex === idx;
+                ? angleDiff < 22.5
+                : !isOpenImageActive && angleDiff < 22.5;
               return (
                 <button
                   key={label}
@@ -480,6 +522,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
                   onClick={() => {
                     setAutoSpin(false);
                     if (videoRef.current && !isCapturingRef.current) videoRef.current.pause();
+                    setShowRear(false);
                     setYawDeg(targetYaw);
                     if (isVideoMode) {
                       if (framesReady) {
@@ -525,7 +568,8 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
             onClick={() => {
               setAutoSpin(false);
               if (videoRef.current && !isCapturingRef.current) videoRef.current.pause();
-              const resetDeg = isVideoMode ? 0 : frames ? 315 : 0;
+              const resetDeg = isVideoMode ? 0 : frames ? homeYawFor(frames.length) : 0;
+              setShowRear(false);
               setYawDeg(resetDeg);
               if (isVideoMode) {
                 if (framesReady) {
@@ -544,8 +588,8 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
         </div>
       </div>
 
-      {/* Drag hint at bottom center */}
-      <div className="pointer-events-none absolute bottom-20 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-black/55 border border-white/10 text-[11px] text-white/75 backdrop-blur-sm">
+      {/* Drag hint at bottom center (hidden on small mobile where bottom sheet sits) */}
+      <div className="hidden sm:block pointer-events-none absolute bottom-20 left-1/2 -translate-x-1/2 z-10 px-3 py-1 rounded-full bg-black/55 border border-white/10 text-[11px] text-white/75 backdrop-blur-sm">
         {isVideoMode
           ? lang === 'hy'
             ? 'Քաշեք հորիզոնական՝ իրական 360° սահուն պտույտի համար • Սքրոլ՝ մոտեցնելու'

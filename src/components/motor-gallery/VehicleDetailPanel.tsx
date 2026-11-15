@@ -71,7 +71,7 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
   return (
     <aside
       aria-label={car.fullName}
-      className="fixed sm:absolute top-14 sm:top-16 right-2 sm:right-5 bottom-2 sm:bottom-4 w-[calc(100vw-1rem)] sm:w-[400px] z-30 bg-[#0c0e14]/92 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in slide-in-from-right"
+      className="fixed sm:absolute bottom-2 inset-x-2 h-[52dvh] sm:h-auto sm:inset-x-auto sm:top-16 sm:right-5 sm:bottom-4 sm:w-[400px] z-30 bg-[#0c0e14]/92 backdrop-blur-2xl border border-white/15 rounded-2xl shadow-2xl flex flex-col overflow-hidden transition-all duration-300 animate-in slide-in-from-right"
     >
       {/* Top Bar with Stock Badge & Close (X) Button */}
       <div className="px-4 pt-3.5 pb-2.5 border-b border-white/10 flex items-center justify-between shrink-0">

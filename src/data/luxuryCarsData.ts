@@ -25,6 +25,8 @@ export interface LuxuryCarSpec {
   spinVideoUrl?: string;
   doorsSpinVideoUrl?: string;
   doorsOpenPhotoUrl?: string;
+  /** Optional real 3D model (.glb) placed in /public/models, e.g. '/models/porsche-911-gt3.glb' */
+  glbUrl?: string;
   droneHotspot: {
     left: string;
     top: string;
@@ -59,6 +61,16 @@ export interface LuxuryCarSpec {
   }>;
 }
 
+/**
+ * Builds the frame list for a 360° spin made with scripts/make-spin-frames.sh
+ * Files live in /public/cars/frames/<slug>/001.jpg ... NNN.jpg
+ */
+export const spinFrameUrls = (slug: string, count = 72, ext = 'jpg'): string[] =>
+  Array.from(
+    { length: count },
+    (_, i) => `/cars/frames/${slug}/${String(i + 1).padStart(3, '0')}.${ext}`
+  );
+
 export const LUXURY_CARS: LuxuryCarSpec[] = [
   {
     id: 'porsche-911-gt3',
@@ -76,20 +88,10 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     caliperColorHex: '#facc15',
     doorType: 'standard',
     enginePitch: 68,
-    heroPhotoUrl: '/cars/porsche-911-gt3.jpg',
+    heroPhotoUrl: '/cars/porsche-911-gt3-studio.jpg',
     rearPhotoUrl: '/cars/porsche-911-gt3-rear.jpg',
-    spinVideoUrl: '/cars/porsche-911-gt3-360.mp4',
+    spinFrames: spinFrameUrls('porsche-a', 72),
     doorsSpinVideoUrl: '/cars/porsche-911-gt3-doors-360.mp4',
-    spinFrames: [
-      '/cars/porsche-911-gt3-0.jpg',
-      '/cars/porsche-911-gt3-45.jpg',
-      '/cars/porsche-911-gt3-90.jpg',
-      '/cars/porsche-911-gt3-135.jpg',
-      '/cars/porsche-911-gt3-180.jpg',
-      '/cars/porsche-911-gt3-rear.jpg',
-      '/cars/porsche-911-gt3-270.jpg',
-      '/cars/porsche-911-gt3.jpg',
-    ],
     doorsOpenPhotoUrl: '/cars/porsche-911-gt3-open.jpg',
     droneHotspot: {
       left: '30.2%',

@@ -2,6 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -89,6 +90,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   const engineRunningRef = useRef<Record<string, boolean>>({});
   const matchedCarIdsRef = useRef<Set<string>>(new Set(LUXURY_CARS.map((c) => c.id)));
   const rigsMapRef = useRef<Map<string, CarRig3D>>(new Map());
+  const glbLoadedRef = useRef<Set<string>>(new Set());
   const cameraTargetPosRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 23.5, 0.01));
   const cameraTargetLookRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
   const isTransitioningCameraRef = useRef<boolean>(false);
@@ -180,6 +182,9 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   const focusOnCar = (car: LuxuryCarSpec | null) => {
     selectedCarIdRef.current = car ? car.id : null;
     setSelectedCarId(car ? car.id : null);
+    if (car) {
+      setSelectedCarViewMode(glbLoadedRef.current.has(car.id) ? '3d' : 'photo');
+    }
 
     if (!car) {
       cameraTargetPosRef.current.set(0, 23.5, 0.01);
@@ -274,50 +279,68 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
     setSelectedColor('all');
   };
 
+  // Loads a .glb into a car's rig (used by the upload button AND by auto-load from `glbUrl`)
+  const applyGlbToRig = (rig: CarRig3D, carId: string, url: string, displayName: string) => {
+    const draco = new DRACOLoader();
+    draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(draco);
+
+    loader.load(
+      url,
+      (gltf) => {
+        while (rig.customModelGroup.children.length > 0) {
+          const child = rig.customModelGroup.children[0];
+          rig.customModelGroup.remove(child);
+        }
+
+        const model = gltf.scene;
+        const box = new THREE.Box3().setFromObject(model);
+        const size = box.getSize(new THREE.Vector3());
+        const center = box.getCenter(new THREE.Vector3());
+
+        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
+        const scale = 4.4 / maxDim;
+        model.scale.setScalar(scale);
+
+        model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
+
+        model.traverse((obj) => {
+          obj.userData.carId = carId;
+          if (obj instanceof THREE.Mesh) {
+            obj.castShadow = true;
+            obj.receiveShadow = true;
+          }
+        });
+
+        rig.customModelGroup.add(model);
+        rig.customModelGroup.visible = true;
+        rig.bodyShellGroup.visible = false;
+        rig.wheels.forEach((w) => {
+          w.visible = false;
+        });
+
+        glbLoadedRef.current.add(carId);
+        setCustomModelNames((prev) => ({ ...prev, [carId]: displayName }));
+        setCustomModelUrls((prev) => ({ ...prev, [carId]: url }));
+        draco.dispose();
+      },
+      undefined,
+      (err) => {
+        console.warn(`Could not load 3D model "${url}" for ${carId}`, err);
+        draco.dispose();
+      }
+    );
+  };
+
   const handleUploadCustomGLB = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     const targetId = selectedCarIdRef.current || LUXURY_CARS[0].id;
     const rig = rigsMapRef.current.get(targetId);
     if (!rig) return;
-
-    const url = URL.createObjectURL(file);
-    const loader = new GLTFLoader();
-    loader.load(url, (gltf) => {
-      while (rig.customModelGroup.children.length > 0) {
-        const child = rig.customModelGroup.children[0];
-        rig.customModelGroup.remove(child);
-      }
-
-      const model = gltf.scene;
-      const box = new THREE.Box3().setFromObject(model);
-      const size = box.getSize(new THREE.Vector3());
-      const center = box.getCenter(new THREE.Vector3());
-
-      const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-      const scale = 4.4 / maxDim;
-      model.scale.setScalar(scale);
-
-      model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
-
-      model.traverse((obj) => {
-        obj.userData.carId = targetId;
-        if (obj instanceof THREE.Mesh) {
-          obj.castShadow = true;
-          obj.receiveShadow = true;
-        }
-      });
-
-      rig.customModelGroup.add(model);
-      rig.customModelGroup.visible = true;
-      rig.bodyShellGroup.visible = false;
-      rig.wheels.forEach((w) => {
-        w.visible = false;
-      });
-
-      setCustomModelNames((prev) => ({ ...prev, [targetId]: file.name }));
-      setCustomModelUrls((prev) => ({ ...prev, [targetId]: url }));
-    });
+    applyGlbToRig(rig, targetId, URL.createObjectURL(file), file.name);
+    if (selectedCarIdRef.current) setSelectedCarViewMode('3d');
   };
 
   // Initialize Three.js Parking Lot Scene
@@ -409,6 +432,14 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
       rigsMap.set(carSpec.id, rig);
     }
     rigsMapRef.current = rigsMap;
+
+    // Auto-load a bundled .glb for every car that has `glbUrl` in luxuryCarsData.ts
+    for (const carSpec of LUXURY_CARS) {
+      const rig = rigsMap.get(carSpec.id);
+      if (rig && carSpec.glbUrl) {
+        applyGlbToRig(rig, carSpec.id, carSpec.glbUrl, carSpec.glbUrl.split('/').pop() || 'model.glb');
+      }
+    }
 
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -653,21 +684,21 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
       <div ref={mountRef} className="w-full h-full" />
 
       {/* Top Dealership Header Bar (Kalbera Motor Gallery) */}
-      <div className="absolute top-0 inset-x-0 z-20 px-4 sm:px-8 py-3.5 flex items-center justify-between bg-gradient-to-b from-black/80 via-black/40 to-transparent pointer-events-none">
+      <div className="absolute top-0 inset-x-0 z-20 px-3 sm:px-8 py-2.5 sm:py-3.5 flex items-center justify-between gap-2 bg-gradient-to-b from-black/55 via-black/20 to-transparent pointer-events-none">
         {/* Brand Crest & Name */}
         <div
           onClick={() => focusOnCar(null)}
-          className="flex items-center gap-2.5 pointer-events-auto cursor-pointer group"
+          className="flex items-center gap-2 sm:gap-2.5 pointer-events-auto cursor-pointer group shrink-0"
         >
-          <div className="w-8 h-8 rounded-lg bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500/25 transition-colors">
-            <Shield className="w-4 h-4 fill-amber-400/20" />
+          <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-lg bg-amber-500/15 border border-amber-400/40 flex items-center justify-center text-amber-400 group-hover:bg-amber-500/25 transition-colors">
+            <Shield className="w-3.5 h-3.5 sm:w-4 sm:h-4 fill-amber-400/20" />
           </div>
           <div className="flex items-center gap-2 tracking-wider">
-            <span className="font-bold text-sm sm:text-base text-white tracking-[0.18em]">
+            <span className="font-bold text-xs sm:text-base text-white tracking-[0.16em] sm:tracking-[0.18em]">
               KALBERA
             </span>
-            <span className="text-white/30">|</span>
-            <span className="text-[11px] sm:text-xs text-white/75 tracking-[0.2em] uppercase">
+            <span className="hidden sm:inline text-white/30">|</span>
+            <span className="hidden sm:inline text-xs text-white/75 tracking-[0.2em] uppercase">
               {lang === 'hy' ? 'ԱՎՏՈՍՐԱՀ 3D' : 'MOTOR GALLERY'}
             </span>
           </div>
@@ -785,7 +816,8 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
       {!selectedCar && (
         <>
           {use8kDroneBackdrop && (
-            <div className="absolute inset-0 z-10 overflow-hidden bg-[#090d14]">
+            <div className="absolute inset-0 z-10 overflow-x-auto overflow-y-hidden sm:overflow-hidden bg-[#090d14]">
+              <div className="relative min-w-[860px] sm:min-w-0 w-full h-full">
               {/* Night / Golden Hour Dusk Layer */}
               <img
                 src="/kalbera-aerial-lot.jpg"
@@ -875,6 +907,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
                   </React.Fragment>
                 );
               })}
+              </div>
             </div>
           )}
 
@@ -1022,7 +1055,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
           )}
 
           {/* Top-Left "< BACK" Button + 3D 360° / 8K Photo Switcher */}
-          <div className="absolute top-16 left-4 sm:left-8 z-20 flex items-center gap-2 flex-wrap">
+          <div className="absolute top-13 sm:top-16 left-2.5 sm:left-8 right-2.5 sm:right-auto z-20 flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <button
               type="button"
               onClick={() => focusOnCar(null)}
