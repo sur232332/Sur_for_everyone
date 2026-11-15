@@ -36,6 +36,8 @@ interface MotorGalleryPageProps {
   lang: Language;
   currency: Currency;
   onToggleLang: () => void;
+  /** When set, this car opens right away (used when coming from the Catalog) */
+  initialCarId?: string;
 }
 
 interface ScreenBadgePos {
@@ -49,6 +51,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   lang,
   currency,
   onToggleLang,
+  initialCarId,
 }) => {
   const mountRef = useRef<HTMLDivElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -670,6 +673,18 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   const isDoorsOpen = selectedCar ? !!doorsOpenMap[selectedCar.id] : false;
   const isTrunkOpen = selectedCar ? !!trunkOpenMap[selectedCar.id] : false;
   const isEngineRunning = selectedCar ? !!engineRunningMap[selectedCar.id] : false;
+
+  // Open a specific car when coming from the Catalog
+  const openedInitialCarRef = useRef(false);
+  useEffect(() => {
+    if (!initialCarId || openedInitialCarRef.current) return;
+    const car = LUXURY_CARS.find((c) => c.id === initialCarId);
+    if (car) {
+      openedInitialCarRef.current = true;
+      focusOnCar(car);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialCarId]);
 
   return (
     <div className="relative w-full h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] bg-[#090d14] text-white overflow-hidden select-none">

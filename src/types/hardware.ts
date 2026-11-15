@@ -4,6 +4,7 @@ export type Language = 'en' | 'hy';
 export type Currency = 'USD' | 'EUR' | 'AMD';
 export type PageRoute =
   | 'motor-gallery'
+  | 'catalog'
   | 'showroom'
   | 'samsung'
   | 'apple'

@@ -11,6 +11,8 @@ import { BrandPage } from './pages/BrandPage';
 import { ComparePage } from './pages/ComparePage';
 import { HomeGuidePage } from './pages/HomeGuidePage';
 import { MotorGalleryPage } from './pages/MotorGalleryPage';
+import { CatalogPage } from './pages/CatalogPage';
+import type { Listing } from './data/listings';
 import { CartItem, Currency, DeviceSpec, Language, PageRoute } from './types/hardware';
 
 const STORAGE_KEYS = {
@@ -37,6 +39,7 @@ export default function App() {
     try {
       if (window.location.pathname === '/gallery') return 'showroom';
       if (window.location.pathname === '/home-guide') return 'home-guide';
+      if (window.location.pathname === '/catalog') return 'catalog';
     } catch {
       // ignore
     }
@@ -44,6 +47,8 @@ export default function App() {
   });
   const [focusedDeviceId, setFocusedDeviceId] = useState<string | undefined>(undefined);
   const [compareSeedId, setCompareSeedId] = useState<string | undefined>(undefined);
+  // Car to open right away in the Motor Gallery (when clicked in the Catalog)
+  const [catalogCarId, setCatalogCarId] = useState<string | undefined>(undefined);
 
   const [lang, setLang] = useState<Language>(() => readStorage<Language>(STORAGE_KEYS.LANG, 'en'));
   const [currency, setCurrency] = useState<Currency>(() =>
@@ -139,6 +144,8 @@ export default function App() {
         setRoute('showroom');
       } else if (path === '/home-guide') {
         setRoute('home-guide');
+      } else if (path === '/catalog') {
+        setRoute('catalog');
       } else {
         setRoute('motor-gallery');
       }
@@ -164,6 +171,16 @@ export default function App() {
       // ignore history errors in sandboxed iframes
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  // Catalog card clicked -> open that item's own viewer
+  const handleOpenListing = (listing: Listing) => {
+    if (listing.viewer.type === 'car-360') {
+      setCatalogCarId(listing.viewer.carId);
+      handleNavigate('motor-gallery');
+    } else if (listing.viewer.type === 'device-3d') {
+      handleNavigate(listing.viewer.brand, listing.viewer.deviceId);
+    }
   };
 
   const handleCompareDevice = (deviceId: string) => {
@@ -231,7 +248,10 @@ export default function App() {
       <div className="min-h-screen flex flex-col bg-[var(--bg-canvas)] text-[var(--text-primary)]">
         <Navbar
           route={route}
-          onNavigate={(r) => handleNavigate(r)}
+          onNavigate={(r) => {
+            setCatalogCarId(undefined);
+            handleNavigate(r);
+          }}
           lang={lang}
           onToggleLang={() => setLang((l) => (l === 'en' ? 'hy' : 'en'))}
           currency={currency}
@@ -259,7 +279,12 @@ export default function App() {
                     lang={lang}
                     currency={currency}
                     onToggleLang={() => setLang((l) => (l === 'en' ? 'hy' : 'en'))}
+                    initialCarId={catalogCarId}
                   />
+                )}
+
+                {route === 'catalog' && (
+                  <CatalogPage lang={lang} currency={currency} onOpenListing={handleOpenListing} />
                 )}
 
                 {route === 'showroom' && (

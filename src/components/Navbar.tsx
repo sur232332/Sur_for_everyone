@@ -38,6 +38,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
   const links: Array<{ id: PageRoute; label: string }> = [
     { id: 'motor-gallery', label: t.nav.motorGallery },
+    { id: 'catalog', label: lang === 'hy' ? 'Կատալոգ' : 'Catalog' },
     { id: 'home-guide', label: t.nav.homeGuide },
     { id: 'showroom', label: t.nav.showroom },
     { id: 'compare', label: t.nav.compare },
