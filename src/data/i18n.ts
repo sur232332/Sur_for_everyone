@@ -4,6 +4,7 @@ export const TRANSLATIONS: Record<
   Language,
   {
     nav: {
+      motorGallery: string;
       showroom: string;
       samsung: string;
       apple: string;
@@ -199,6 +200,7 @@ export const TRANSLATIONS: Record<
 > = {
   en: {
     nav: {
+      motorGallery: '3D Auto Gallery',
       showroom: 'Gallery',
       samsung: 'Samsung',
       apple: 'Apple',
@@ -397,6 +399,7 @@ export const TRANSLATIONS: Record<
   },
   hy: {
     nav: {
+      motorGallery: '3D Ավտոսրահ',
       showroom: 'Կատալոգ',
       samsung: 'Samsung',
       apple: 'Apple',

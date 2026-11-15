@@ -10,6 +10,7 @@ import { ShowroomPage } from './pages/ShowroomPage';
 import { BrandPage } from './pages/BrandPage';
 import { ComparePage } from './pages/ComparePage';
 import { HomeGuidePage } from './pages/HomeGuidePage';
+import { MotorGalleryPage } from './pages/MotorGalleryPage';
 import { CartItem, Currency, DeviceSpec, Language, PageRoute } from './types/hardware';
 
 const STORAGE_KEYS = {
@@ -35,10 +36,11 @@ export default function App() {
   const [route, setRoute] = useState<PageRoute>(() => {
     try {
       if (window.location.pathname === '/gallery') return 'showroom';
+      if (window.location.pathname === '/home-guide') return 'home-guide';
     } catch {
       // ignore
     }
-    return 'home-guide';
+    return 'motor-gallery';
   });
   const [focusedDeviceId, setFocusedDeviceId] = useState<string | undefined>(undefined);
   const [compareSeedId, setCompareSeedId] = useState<string | undefined>(undefined);
@@ -249,6 +251,14 @@ export default function App() {
               transition={{ duration: 0.22, ease: 'easeOut' }}
             >
               <ErrorBoundary>
+                {route === 'motor-gallery' && (
+                  <MotorGalleryPage
+                    lang={lang}
+                    currency={currency}
+                    onToggleLang={() => setLang((l) => (l === 'en' ? 'hy' : 'en'))}
+                  />
+                )}
+
                 {route === 'showroom' && (
                   <ShowroomPage
                     lang={lang}

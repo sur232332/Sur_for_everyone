@@ -2,7 +2,14 @@ export type BrandId = 'samsung' | 'apple' | 'huawei';
 export type DeviceCategory = 'phone' | 'foldable' | 'laptop' | 'chip';
 export type Language = 'en' | 'hy';
 export type Currency = 'USD' | 'EUR' | 'AMD';
-export type PageRoute = 'showroom' | 'samsung' | 'apple' | 'huawei' | 'compare' | 'home-guide';
+export type PageRoute =
+  | 'motor-gallery'
+  | 'showroom'
+  | 'samsung'
+  | 'apple'
+  | 'huawei'
+  | 'compare'
+  | 'home-guide';
 
 export type ExplodedLayerId =
   | 'back_glass'

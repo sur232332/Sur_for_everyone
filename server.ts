@@ -632,7 +632,7 @@ or
   });
 
 async function startServer() {
-  const PORT = 3000;
+  const PORT = Number(process.env.PORT) || 3002;
 
   if (process.env.NODE_ENV !== 'production') {
     const vite = await createViteServer({
@@ -648,9 +648,23 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, '0.0.0.0', () => {
+  const srvPrimary = app.listen(PORT, '0.0.0.0', () => {
     console.log(`SILICON PULSE server listening on http://localhost:${PORT}`);
   });
+  srvPrimary.on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+      console.log(`Port ${PORT} is already in use.`);
+    }
+  });
+
+  if (PORT !== 3000) {
+    const srvFallback = app.listen(3000, '0.0.0.0', () => {
+      console.log(`SILICON PULSE server also listening on http://localhost:3000`);
+    });
+    srvFallback.on('error', () => {
+      // ignore if 3000 is busy
+    });
+  }
 }
 
 if (!process.env.VERCEL) {
