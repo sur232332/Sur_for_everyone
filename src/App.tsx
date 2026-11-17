@@ -292,13 +292,7 @@ export default function App() {
                 )}
 
                 {route === 'story' && (
-                  <ScrollStoryPage
-                    lang={lang}
-                    onOpenCar={(id) => {
-                      setCatalogCarId(id);
-                      handleNavigate('motor-gallery');
-                    }}
-                  />
+                  <ScrollStoryPage lang={lang} onNavigate={handleNavigate} />
                 )}
 
                 {route === 'my-lot' && <MyLotPage lang={lang} onNavigate={handleNavigate} />}
