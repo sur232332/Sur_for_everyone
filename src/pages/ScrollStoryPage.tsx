@@ -118,6 +118,29 @@ const SCENES: Scene[] = [
   },
 ];
 
+/** decode a JPEG blob; falls back for browsers (iOS Safari) without resize options */
+async function decodeBlob(blob: Blob, maxW: number): Promise<ImageBitmap> {
+  try {
+    return await createImageBitmap(blob, { resizeWidth: maxW, resizeQuality: 'medium' });
+  } catch {
+    /* try plain decode */
+  }
+  try {
+    return await createImageBitmap(blob);
+  } catch {
+    /* try <img> decode */
+  }
+  const url = URL.createObjectURL(blob);
+  try {
+    const img = new Image();
+    img.src = url;
+    await img.decode();
+    return img as unknown as ImageBitmap;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export function ScrollStoryPage({ lang, onNavigate }: Props) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -172,11 +195,11 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
         const blob = blobsRef.current[k];
         if (!blob) continue;
         pendingRef.current.add(k);
-        void createImageBitmap(blob, { resizeWidth: maxW, resizeQuality: 'medium' })
+        void decodeBlob(blob, maxW)
           .then((bmp) => {
             pendingRef.current.delete(k);
             if (bitmapsRef.current.length === 0) {
-              bmp.close();
+              (bmp as ImageBitmap).close?.();
               return;
             }
             bitmapsRef.current[k] = bmp;
@@ -187,7 +210,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
     }
     for (let k = 0; k < FRAME_COUNT; k++) {
       if (m[k] && Math.abs(k - idx) > 40) {
-        m[k]?.close();
+        m[k]?.close?.();
         m[k] = null;
       }
     }
@@ -222,7 +245,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
     for (let k = 0; k < 6; k++) void worker();
     return () => {
       cancelled = true;
-      bitmapsRef.current.forEach((b) => b?.close());
+      bitmapsRef.current.forEach((b) => b?.close?.());
       bitmapsRef.current = [];
       blobsRef.current = [];
       pendingRef.current.clear();
