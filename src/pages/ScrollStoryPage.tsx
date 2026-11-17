@@ -188,8 +188,8 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
   /** decode the frames around idx and free the far ones */
   const ensureAround = (idx: number) => {
     const m = bitmapsRef.current;
-    const maxW = window.innerWidth < 768 ? 960 : 1280;
-    for (let d = 0; d <= 14; d++) {
+    const maxW = window.innerWidth < 768 ? 720 : 1280;
+    for (let d = 0; d <= 30; d++) {
       for (const k of d === 0 ? [idx] : [idx - d, idx + d]) {
         if (k < 0 || k >= FRAME_COUNT || m[k] || pendingRef.current.has(k)) continue;
         const blob = blobsRef.current[k];
@@ -209,7 +209,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
       }
     }
     for (let k = 0; k < FRAME_COUNT; k++) {
-      if (m[k] && Math.abs(k - idx) > 40) {
+      if (m[k] && Math.abs(k - idx) > 70) {
         m[k]?.close?.();
         m[k] = null;
       }
@@ -235,8 +235,9 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
         done++;
         if (!cancelled) {
           setLoaded(done);
-          if (i < 16) {
-            ensureAround(lastIdxRef.current < 0 ? 0 : lastIdxRef.current);
+          const cur = lastIdxRef.current < 0 ? 0 : lastIdxRef.current;
+          if (Math.abs(i - cur) <= 30) {
+            ensureAround(cur);
             if (lastIdxRef.current <= 0) draw(0);
           }
         }
@@ -259,10 +260,23 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
     const wrap = wrapRef.current;
     if (!canvas || !wrap) return;
 
-    const update = () => {
+    let target = 0;
+    let shown = -1;
+    let ticking = false;
+    const readTarget = () => {
       const rect = wrap.getBoundingClientRect();
       const total = wrap.offsetHeight - window.innerHeight;
-      const p = clamp(-rect.top / Math.max(1, total * 0.97), 0, 1);
+      target = clamp(-rect.top / Math.max(1, total * 0.97), 0, 1);
+    };
+    const tick = () => {
+      // ease toward the scroll position so frames glide instead of jumping
+      shown = shown < 0 ? target : shown + (target - shown) * 0.18;
+      if (Math.abs(target - shown) < 0.00015) shown = target;
+      update(shown);
+      if (shown !== target) requestAnimationFrame(tick);
+      else ticking = false;
+    };
+    const update = (p: number) => {
       const idx = Math.round(p * (FRAME_COUNT - 1));
       if (idx !== lastIdxRef.current) {
         lastIdxRef.current = idx;
@@ -287,13 +301,18 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
       canvas.width = Math.round(canvas.clientWidth * dpr);
       canvas.height = Math.round(canvas.clientHeight * dpr);
       lastIdxRef.current = -1;
-      update();
+      readTarget();
+      shown = target;
+      update(shown);
     };
 
     let raf = 0;
     const onScroll = () => {
-      cancelAnimationFrame(raf);
-      raf = requestAnimationFrame(update);
+      readTarget();
+      if (!ticking) {
+        ticking = true;
+        raf = requestAnimationFrame(tick);
+      }
     };
     resize();
     window.addEventListener('scroll', onScroll, { passive: true });
@@ -306,7 +325,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [loaded === FRAME_COUNT]);
 
-  const ready = loaded >= 12;
+  const ready = loaded >= FRAME_COUNT;
   const hy = lang === 'hy';
 
   return (
