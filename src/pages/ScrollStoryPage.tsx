@@ -10,9 +10,9 @@ interface Props {
 type L = { en: string; hy: string };
 const clamp = (v: number, a: number, b: number) => Math.min(b, Math.max(a, v));
 
-/** One cinematic journey (10 s video cut into frames). Scrolling moves the camera through the whole site. */
-const FRAME_COUNT = 120;
-const FRAMES = Array.from({ length: FRAME_COUNT }, (_, i) => `/story/frames/${String(i + 1).padStart(3, '0')}.jpg`);
+/** One cinematic journey (10 s video, every frame). Scrolling moves the camera through the whole site. */
+const FRAME_COUNT = 240;
+const FRAMES = Array.from({ length: FRAME_COUNT }, (_, i) => `/story/f240/${String(i + 1).padStart(3, '0')}.jpg`);
 
 interface Cta {
   label: L;
@@ -128,9 +128,24 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
   const lastIdxRef = useRef(-1);
   const [loaded, setLoaded] = useState(0);
 
+  // Frames stay as small compressed files in memory; only the ones near the current scroll position are decoded
+  const blobsRef = useRef<(Blob | null)[]>([]);
+  const pendingRef = useRef<Set<number>>(new Set());
+
+  const nearest = (idx: number): ImageBitmap | null => {
+    const m = bitmapsRef.current;
+    for (let d = 0; d < FRAME_COUNT; d++) {
+      const a = m[idx - d];
+      if (a) return a;
+      const b = m[idx + d];
+      if (b) return b;
+    }
+    return null;
+  };
+
   const draw = (idx: number) => {
     const canvas = canvasRef.current;
-    const bmp = bitmapsRef.current[idx] ?? bitmapsRef.current.find(Boolean) ?? null;
+    const bmp = nearest(idx);
     if (!canvas || !bmp) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
@@ -147,11 +162,42 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
     ctx.drawImage(bmp, (cw - w) / 2, y, w, h);
   };
 
-  // decode frames in parallel
+  /** decode the frames around idx and free the far ones */
+  const ensureAround = (idx: number) => {
+    const m = bitmapsRef.current;
+    const maxW = window.innerWidth < 768 ? 960 : 1280;
+    for (let d = 0; d <= 14; d++) {
+      for (const k of d === 0 ? [idx] : [idx - d, idx + d]) {
+        if (k < 0 || k >= FRAME_COUNT || m[k] || pendingRef.current.has(k)) continue;
+        const blob = blobsRef.current[k];
+        if (!blob) continue;
+        pendingRef.current.add(k);
+        void createImageBitmap(blob, { resizeWidth: maxW, resizeQuality: 'medium' })
+          .then((bmp) => {
+            pendingRef.current.delete(k);
+            if (bitmapsRef.current.length === 0) {
+              bmp.close();
+              return;
+            }
+            bitmapsRef.current[k] = bmp;
+            if (Math.abs(k - lastIdxRef.current) <= 1) draw(lastIdxRef.current);
+          })
+          .catch(() => pendingRef.current.delete(k));
+      }
+    }
+    for (let k = 0; k < FRAME_COUNT; k++) {
+      if (m[k] && Math.abs(k - idx) > 40) {
+        m[k]?.close();
+        m[k] = null;
+      }
+    }
+  };
+
+  // download all frames (small JPEG files) in parallel
   useEffect(() => {
     let cancelled = false;
-    const maxW = window.innerWidth < 768 ? 960 : 1280;
     bitmapsRef.current = new Array(FRAME_COUNT).fill(null);
+    blobsRef.current = new Array(FRAME_COUNT).fill(null);
     let done = 0;
     let next = 0;
     const worker = async () => {
@@ -159,26 +205,17 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
         const i = next++;
         if (i >= FRAME_COUNT) return;
         try {
-          const blob = await (await fetch(FRAMES[i])).blob();
-          const probe = await createImageBitmap(blob);
-          const scale = Math.min(1, maxW / probe.width);
-          const bmp =
-            scale < 1
-              ? await createImageBitmap(blob, { resizeWidth: Math.round(probe.width * scale), resizeQuality: 'high' })
-              : probe;
-          if (scale < 1) probe.close();
-          if (cancelled) {
-            bmp.close();
-            return;
-          }
-          bitmapsRef.current[i] = bmp;
+          blobsRef.current[i] = await (await fetch(FRAMES[i])).blob();
         } catch {
           /* skip a broken frame */
         }
         done++;
         if (!cancelled) {
           setLoaded(done);
-          if (i === 0) draw(0);
+          if (i < 16) {
+            ensureAround(lastIdxRef.current < 0 ? 0 : lastIdxRef.current);
+            if (lastIdxRef.current <= 0) draw(0);
+          }
         }
       }
     };
@@ -187,6 +224,8 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
       cancelled = true;
       bitmapsRef.current.forEach((b) => b?.close());
       bitmapsRef.current = [];
+      blobsRef.current = [];
+      pendingRef.current.clear();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -204,6 +243,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
       const idx = Math.round(p * (FRAME_COUNT - 1));
       if (idx !== lastIdxRef.current) {
         lastIdxRef.current = idx;
+        ensureAround(idx);
         draw(idx);
       }
       if (barRef.current) barRef.current.style.transform = `scaleX(${p})`;
@@ -248,7 +288,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
 
   return (
     <div className="bg-[#090d14] text-white">
-      <div ref={wrapRef} className="relative" style={{ height: '1100vh' }}>
+      <div ref={wrapRef} className="relative" style={{ height: '2000vh' }}>
         <div className="sticky top-14 sm:top-16 h-[calc(100vh-3.5rem)] sm:h-[calc(100vh-4rem)] overflow-hidden">
           <canvas ref={canvasRef} className="absolute inset-0 w-full h-full" />
 
