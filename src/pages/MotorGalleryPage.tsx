@@ -1,3 +1,4 @@
+import { CarHistoryScroll } from '../components/motor-gallery/CarHistoryScroll';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -59,7 +60,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   const [selectedCarId, setSelectedCarId] = useState<string | null>(null);
   // Right detail panel can be hidden without leaving the car view
   const [isDetailPanelHidden, setIsDetailPanelHidden] = useState<boolean>(false);
-  const [selectedCarViewMode, setSelectedCarViewMode] = useState<'3d' | 'photo'>('photo');
+  const [selectedCarViewMode, setSelectedCarViewMode] = useState<'3d' | 'photo' | 'history'>('photo');
   const [hoveredCarId, setHoveredCarId] = useState<string | null>(null);
   const [use8kDroneBackdrop, setUse8kDroneBackdrop] = useState<boolean>(true);
   const [lotDayMode, setLotDayMode] = useState<boolean>(false); // false = Golden Hour Night/Dusk, true = Day
@@ -1073,6 +1074,10 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
             />
           )}
 
+          {selectedCarViewMode === 'history' && selectedCar.spinFrames && (
+            <CarHistoryScroll key={selectedCar.id} car={selectedCar} lang={lang} />
+          )}
+
           {/* Top-Left "< BACK" Button + 3D 360° / 8K Photo Switcher */}
           <div className="absolute top-13 sm:top-16 left-2.5 sm:left-8 right-2.5 sm:right-auto z-20 flex items-center gap-1.5 sm:gap-2 flex-wrap">
             <button
@@ -1117,6 +1122,19 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
                 >
                   {lang === 'hy' ? '8K Լուսանկար' : '8K Photo'}
                 </button>
+                {selectedCar.spinFrames && (
+                  <button
+                    type="button"
+                    onClick={() => setSelectedCarViewMode('history')}
+                    className={`px-2.5 py-1.5 rounded-md text-[11px] font-mono-tech font-semibold transition-all cursor-pointer ${
+                      selectedCarViewMode === 'history'
+                        ? 'bg-amber-500 text-black'
+                        : 'text-white/70 hover:text-white'
+                    }`}
+                  >
+                    History
+                  </button>
+                )}
               </div>
             )}
           </div>
