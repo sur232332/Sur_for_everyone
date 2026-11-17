@@ -43,11 +43,11 @@ export default function App() {
       if (window.location.pathname === '/home-guide') return 'home-guide';
       if (window.location.pathname === '/catalog') return 'catalog';
       if (window.location.pathname === '/my-lot') return 'my-lot';
-      if (window.location.pathname === '/story') return 'story';
+      if (window.location.pathname === '/motor-gallery') return 'motor-gallery';
     } catch {
       // ignore
     }
-    return 'motor-gallery';
+    return 'story';
   });
   const [focusedDeviceId, setFocusedDeviceId] = useState<string | undefined>(undefined);
   const [compareSeedId, setCompareSeedId] = useState<string | undefined>(undefined);
@@ -152,10 +152,10 @@ export default function App() {
         setRoute('catalog');
       } else if (path === '/my-lot') {
         setRoute('my-lot');
-      } else if (path === '/story') {
-        setRoute('story');
-      } else {
+      } else if (path === '/motor-gallery') {
         setRoute('motor-gallery');
+      } else {
+        setRoute('story');
       }
     };
     window.addEventListener('popstate', onPopState);
@@ -169,9 +169,7 @@ export default function App() {
       const targetPath =
         nextRoute === 'showroom'
           ? '/gallery'
-          : nextRoute === 'home-guide'
-            ? '/'
-            : `/${nextRoute}`;
+          : `/${nextRoute}`;
       if (window.location.pathname !== targetPath) {
         window.history.pushState({}, '', targetPath);
       }

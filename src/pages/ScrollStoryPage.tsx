@@ -120,6 +120,18 @@ const SCENES: Scene[] = [
 
 /** decode a JPEG blob; falls back for browsers (iOS Safari) without resize options */
 async function decodeBlob(blob: Blob, maxW: number): Promise<ImageBitmap> {
+  if (maxW <= 480) {
+    // phones only ever show the centre of the frame: keep just that, small, so every frame can stay decoded
+    try {
+      return await createImageBitmap(blob, 320, 0, 640, 720, {
+        resizeWidth: 480,
+        resizeHeight: 540,
+        resizeQuality: 'medium',
+      });
+    } catch {
+      /* fall through to full-frame decode */
+    }
+  }
   try {
     return await createImageBitmap(blob, { resizeWidth: maxW, resizeQuality: 'medium' });
   } catch {
@@ -188,8 +200,9 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
   /** decode the frames around idx and free the far ones */
   const ensureAround = (idx: number) => {
     const m = bitmapsRef.current;
-    const maxW = window.innerWidth < 768 ? 720 : 1280;
-    for (let d = 0; d <= 30; d++) {
+    const maxW = window.innerWidth < 768 ? 480 : 1280;
+    const mobile = window.innerWidth < 768;
+    for (let d = 0; d <= (mobile ? FRAME_COUNT : 30); d++) {
       for (const k of d === 0 ? [idx] : [idx - d, idx + d]) {
         if (k < 0 || k >= FRAME_COUNT || m[k] || pendingRef.current.has(k)) continue;
         const blob = blobsRef.current[k];
@@ -208,7 +221,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
           .catch(() => pendingRef.current.delete(k));
       }
     }
-    for (let k = 0; k < FRAME_COUNT; k++) {
+    for (let k = 0; !mobile && k < FRAME_COUNT; k++) {
       if (m[k] && Math.abs(k - idx) > 70) {
         m[k]?.close?.();
         m[k] = null;
@@ -228,6 +241,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
         const i = next++;
         if (i >= FRAME_COUNT) return;
         try {
+          if (window.innerWidth < 768 && i % 2 === 1) throw new Error('skip');
           blobsRef.current[i] = await (await fetch(FRAMES[i])).blob();
         } catch {
           /* skip a broken frame */
@@ -236,7 +250,7 @@ export function ScrollStoryPage({ lang, onNavigate }: Props) {
         if (!cancelled) {
           setLoaded(done);
           const cur = lastIdxRef.current < 0 ? 0 : lastIdxRef.current;
-          if (Math.abs(i - cur) <= 30) {
+          if (window.innerWidth < 768 || Math.abs(i - cur) <= 30) {
             ensureAround(cur);
             if (lastIdxRef.current <= 0) draw(0);
           }
