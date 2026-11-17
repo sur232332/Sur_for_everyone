@@ -5,6 +5,8 @@ export type Currency = 'USD' | 'EUR' | 'AMD';
 export type PageRoute =
   | 'motor-gallery'
   | 'catalog'
+  | 'my-lot'
+  | 'story'
   | 'showroom'
   | 'samsung'
   | 'apple'

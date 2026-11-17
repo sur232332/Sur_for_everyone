@@ -12,6 +12,8 @@ import { ComparePage } from './pages/ComparePage';
 import { HomeGuidePage } from './pages/HomeGuidePage';
 import { MotorGalleryPage } from './pages/MotorGalleryPage';
 import { CatalogPage } from './pages/CatalogPage';
+import { MyLotPage } from './pages/MyLotPage';
+import { ScrollStoryPage } from './pages/ScrollStoryPage';
 import type { Listing } from './data/listings';
 import { CartItem, Currency, DeviceSpec, Language, PageRoute } from './types/hardware';
 
@@ -40,6 +42,8 @@ export default function App() {
       if (window.location.pathname === '/gallery') return 'showroom';
       if (window.location.pathname === '/home-guide') return 'home-guide';
       if (window.location.pathname === '/catalog') return 'catalog';
+      if (window.location.pathname === '/my-lot') return 'my-lot';
+      if (window.location.pathname === '/story') return 'story';
     } catch {
       // ignore
     }
@@ -146,6 +150,10 @@ export default function App() {
         setRoute('home-guide');
       } else if (path === '/catalog') {
         setRoute('catalog');
+      } else if (path === '/my-lot') {
+        setRoute('my-lot');
+      } else if (path === '/story') {
+        setRoute('story');
       } else {
         setRoute('motor-gallery');
       }
@@ -283,6 +291,18 @@ export default function App() {
                   />
                 )}
 
+                {route === 'story' && (
+                  <ScrollStoryPage
+                    lang={lang}
+                    onOpenCar={(id) => {
+                      setCatalogCarId(id);
+                      handleNavigate('motor-gallery');
+                    }}
+                  />
+                )}
+
+                {route === 'my-lot' && <MyLotPage lang={lang} onNavigate={handleNavigate} />}
+
                 {route === 'catalog' && (
                   <CatalogPage lang={lang} currency={currency} onOpenListing={handleOpenListing} />
                 )}
@@ -365,7 +385,7 @@ export default function App() {
           </AnimatePresence>
         </main>
 
-        <footer className="border-t border-[var(--border-hairline)] mt-12 py-6 px-4 sm:px-6 lg:px-8">
+        <footer hidden={route === 'story'} className="border-t border-[var(--border-hairline)] mt-12 py-6 px-4 sm:px-6 lg:px-8">
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[var(--text-secondary)]">
             <div>
               SILICON PULSE ·{' '}

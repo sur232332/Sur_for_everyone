@@ -222,7 +222,8 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
             </div>
           </div>
 
-          <div className="grid grid-cols-3 gap-1.5">
+          <div className={`grid gap-1.5 ${car.openingsInSpin ? 'grid-cols-1' : 'grid-cols-3'}`}>
+            {!car.openingsInSpin && (
             <button
               type="button"
               onClick={() => onToggleDoors(car.id)}
@@ -243,7 +244,9 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
                     : 'DOORS'}
               </span>
             </button>
+            )}
 
+            {!car.openingsInSpin && (
             <button
               type="button"
               onClick={() => onToggleTrunk(car.id)}
@@ -264,6 +267,7 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
                     : 'TRUNK'}
               </span>
             </button>
+            )}
 
             <button
               type="button"

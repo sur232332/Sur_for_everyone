@@ -23,7 +23,7 @@ export type ListingCategory = 'cars' | 'tech';
 export type ListingViewer =
   | { type: 'car-360'; carId: string }
   | { type: 'device-3d'; deviceId: string; brand: BrandId }
-  | { type: 'photos'; photos: string[] };
+  | { type: 'photos'; photos: string[]; spin?: boolean };
 
 export interface Listing {
   id: string;
@@ -120,8 +120,8 @@ export function listingFromDb(row: DbListing): Listing {
     brand: row.brand,
     year: row.year ?? undefined,
     imageUrl: row.photos[0],
-    is8k: false,
-    viewer: { type: 'photos', photos: row.photos },
+    is8k: Boolean(row.spin),
+    viewer: { type: 'photos', photos: row.photos, spin: Boolean(row.spin) },
     description: row.description,
     phone: row.phone ?? undefined,
   };

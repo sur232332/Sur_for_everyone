@@ -28,5 +28,7 @@ export interface DbListing {
   year: number | null;
   phone: string | null;
   photos: string[];
+  /** true = the photos are frames of a 360° turntable video */
+  spin?: boolean;
   created_at: string;
 }

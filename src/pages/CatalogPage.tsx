@@ -4,6 +4,7 @@ import { supabase, DbListing } from '../lib/supabase';
 import { AuthModal } from '../components/AuthModal';
 import { AddListingModal } from '../components/AddListingModal';
 import { Product2DIllustration } from '../components/Product2DIllustration';
+import { SpinViewer } from '../components/SpinViewer';
 import {
   ALL_LISTINGS,
   LISTING_CATEGORIES,
@@ -49,7 +50,25 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
   const [addOpen, setAddOpen] = useState(false);
   const [onlyMine, setOnlyMine] = useState(false);
   const [editListing, setEditListing] = useState<Listing | null>(null);
+  // In-page delete confirmation (browser confirm()/alert() popups can be blocked)
+  const [deleteTarget, setDeleteTarget] = useState<Listing | null>(null);
+  const [deleteBusy, setDeleteBusy] = useState(false);
+  const [deleteError, setDeleteError] = useState<string | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // A car sent here from "My Lot": open the post form with its details filled in
+  const [sellPrefill, setSellPrefill] = useState<{ title?: string; brand?: string; year?: number | null } | null>(() => {
+    try {
+      const raw = sessionStorage.getItem('sp_sell_prefill');
+      if (!raw) return null;
+      sessionStorage.removeItem('sp_sell_prefill');
+      return JSON.parse(raw);
+    } catch {
+      return null;
+    }
+  });
+  useEffect(() => {
+    if (sellPrefill && userId) setAddOpen(true);
+  }, [sellPrefill, userId]);
 
   const loadDbListings = useCallback(async () => {
     const { data, error } = await supabase
@@ -82,11 +101,12 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
 
   const handleDelete = async (listing: Listing) => {
     if (!listing.dbId) return;
-    const sure = window.confirm(lang === 'hy' ? 'Ջնջե՞լ այս հայտարարությունը' : 'Delete this listing?');
-    if (!sure) return;
+    setDeleteBusy(true);
+    setDeleteError(null);
     const { error } = await supabase.from('listings').delete().eq('id', listing.dbId);
     if (error) {
-      window.alert(error.message);
+      setDeleteBusy(false);
+      setDeleteError(error.message);
       return;
     }
     // Remove its photos from storage too (paths look like <user id>/<file>)
@@ -96,6 +116,8 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
         .filter((p): p is string => Boolean(p));
       if (paths.length) await supabase.storage.from('listing-photos').remove(paths);
     }
+    setDeleteBusy(false);
+    setDeleteTarget(null);
     setPhotoListing(null);
     void loadDbListings();
   };
@@ -448,12 +470,22 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
           >
             <X className="w-5 h-5" />
           </button>
-          <img
-            src={photoListing.viewer.photos[photoIndex]}
-            alt={photoListing.title[lang]}
-            onClick={(e) => e.stopPropagation()}
-            className="max-w-full max-h-[75vh] rounded-xl object-contain"
-          />
+          {photoListing.viewer.spin ? (
+            <div onClick={(e) => e.stopPropagation()} className="w-full max-w-3xl">
+              <SpinViewer
+                frames={photoListing.viewer.photos}
+                alt={photoListing.title[lang]}
+                className="w-full h-[55vh] sm:h-[65vh] rounded-xl bg-black"
+              />
+            </div>
+          ) : (
+            <img
+              src={photoListing.viewer.photos[photoIndex]}
+              alt={photoListing.title[lang]}
+              onClick={(e) => e.stopPropagation()}
+              className="max-w-full max-h-[75vh] rounded-xl object-contain"
+            />
+          )}
           <div className="mt-3 text-white text-center max-w-lg" onClick={(e) => e.stopPropagation()}>
             <div className="font-bold">{formatPrice(photoListing.priceUsd)}</div>
             <div className="text-sm opacity-80">
@@ -491,7 +523,10 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
               {userId && photoListing.ownerId === userId && (
                 <button
                   type="button"
-                  onClick={() => void handleDelete(photoListing)}
+                  onClick={() => {
+                    setDeleteError(null);
+                    setDeleteTarget(photoListing);
+                  }}
                   className="h-9 px-3 rounded-lg bg-red-600 text-white text-sm font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                 >
                   <Trash2 className="w-4 h-4" />
@@ -500,7 +535,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
               )}
             </div>
           </div>
-          {photoListing.viewer.photos.length > 1 && (
+          {photoListing.viewer.photos.length > 1 && !photoListing.viewer.spin && (
             <div className="mt-3 flex gap-2" onClick={(e) => e.stopPropagation()}>
               {photoListing.viewer.photos.map((p, i) => (
                 <button
@@ -519,6 +554,40 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
         </div>
       )}
 
+      {deleteTarget && (
+        <div
+          className="fixed inset-0 z-[80] bg-black/70 flex items-center justify-center p-4"
+          onClick={() => !deleteBusy && setDeleteTarget(null)}
+        >
+          <div
+            className="w-full max-w-sm rounded-2xl bg-[var(--bg-surface)] border border-[var(--border-hairline)] p-5 space-y-3 text-[var(--text-primary)]"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="font-bold">{hy ? 'Ջնջե՞լ այս հայտարարությունը' : 'Delete this listing?'}</div>
+            <div className="text-sm opacity-80">{deleteTarget.title[lang]}</div>
+            {deleteError && <div className="text-sm text-red-500">{deleteError}</div>}
+            <div className="flex gap-2">
+              <button
+                type="button"
+                disabled={deleteBusy}
+                onClick={() => setDeleteTarget(null)}
+                className="flex-1 h-10 rounded-lg border border-[var(--border-hairline)] text-sm font-semibold cursor-pointer"
+              >
+                {hy ? 'Չեղարկել' : 'Cancel'}
+              </button>
+              <button
+                type="button"
+                disabled={deleteBusy}
+                onClick={() => void handleDelete(deleteTarget)}
+                className="flex-1 h-10 rounded-lg bg-red-600 text-white text-sm font-bold disabled:opacity-60 cursor-pointer"
+              >
+                {deleteBusy ? '…' : hy ? 'Ջնջել' : 'Delete'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {authOpen && <AuthModal lang={lang} onClose={() => setAuthOpen(false)} />}
       {addOpen && userId && (
         <AddListingModal
@@ -526,7 +595,11 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
           currency={currency}
           rateFromUsd={RATES[currency].rate}
           userId={userId}
-          onClose={() => setAddOpen(false)}
+          prefill={sellPrefill ?? undefined}
+          onClose={() => {
+            setAddOpen(false);
+            setSellPrefill(null);
+          }}
           onCreated={() => void loadDbListings()}
         />
       )}

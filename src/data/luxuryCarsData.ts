@@ -24,10 +24,14 @@ export interface LuxuryCarSpec {
   spinFrames?: string[];
   /** Optional second 360° frame set that shows the trunk / rear (used by the Rear button) */
   trunkSpinFrames?: string[];
+  /** True when the 360° frames already show the trunk/lids opening, so the Doors/Trunk buttons are hidden */
+  openingsInSpin?: boolean;
   /** If the spin frames cover only part of a turn (e.g. 145 = front to rear three-quarter), set it here. Drag stops at the ends and auto-spin goes back and forth. */
   spinArcDeg?: number;
   spinVideoUrl?: string;
   doorsSpinVideoUrl?: string;
+  /** Short cinematic clip that plays once when the car is opened (then stays on its last frame) */
+  introVideoUrl?: string;
   /** 360° frame set with doors, frunk and engine cover open (used by the Open doors button) */
   doorsSpinFrames?: string[];
   doorsOpenPhotoUrl?: string;
@@ -95,11 +99,8 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     doorType: 'standard',
     enginePitch: 68,
     heroPhotoUrl: '/cars/porsche-911-gt3-studio.jpg',
-    rearPhotoUrl: '/cars/porsche-911-gt3-rear.jpg',
-    spinFrames: spinFrameUrls('porsche-360c', 100),
-    trunkSpinFrames: spinFrameUrls('porsche-trunk', 99),
-    doorsSpinFrames: spinFrameUrls('porsche-doors', 100),
-    doorsOpenPhotoUrl: '/cars/porsche-911-gt3-open.jpg',
+    spinFrames: spinFrameUrls('porsche-show', 100),
+    openingsInSpin: true,
     droneHotspot: {
       left: '30.2%',
       top: '31%',
@@ -155,6 +156,7 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     doorType: 'standard',
     enginePitch: 52,
     heroPhotoUrl: '/cars/lamborghini-urus.jpg',
+    introVideoUrl: '/cars/lamborghini-urus-intro-v2.mp4',
     rearPhotoUrl: '/cars/lamborghini-urus-rear.jpg',
     droneHotspot: {
       left: '50.0%',

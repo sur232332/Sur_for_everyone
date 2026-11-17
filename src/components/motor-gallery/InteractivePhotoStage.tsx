@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { RotateCw, ZoomIn, ZoomOut, Compass, Play, Pause, DoorOpen } from 'lucide-react';
+import { RotateCw, RotateCcw, ZoomIn, ZoomOut, Compass, Play, Pause, DoorOpen } from 'lucide-react';
 import { LuxuryCarSpec } from '../../data/luxuryCarsData';
 
 type Language = 'en' | 'hy';
@@ -52,6 +52,41 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   const [cacheProgress, setCacheProgress] = useState<number>(0);
   const [framesReady, setFramesReady] = useState<boolean>(false);
   const [showRear, setShowRear] = useState<boolean>(false);
+  // Bumping this restarts the car's intro clip (Replay button)
+  const [introPlayKey, setIntroPlayKey] = useState<number>(0);
+  const introVideoRef = useRef<HTMLVideoElement | null>(null);
+  const introDragRef = useRef<{ x: number; time: number; width: number } | null>(null);
+
+  // Drag across the intro clip to move it forward / backward by hand
+  const handleIntroPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const video = introVideoRef.current;
+    if (!video) return;
+    video.pause();
+    introDragRef.current = {
+      x: e.clientX,
+      time: video.currentTime,
+      width: e.currentTarget.getBoundingClientRect().width || 1,
+    };
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {
+      // keep working even if the browser refuses pointer capture
+    }
+  };
+  const handleIntroPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    const video = introVideoRef.current;
+    const start = introDragRef.current;
+    if (!video || !start || !Number.isFinite(video.duration)) return;
+    // Dragging across the full width moves through the whole clip
+    const next = start.time + ((e.clientX - start.x) / start.width) * video.duration;
+    video.currentTime = Math.min(Math.max(next, 0), Math.max(0, video.duration - 0.05));
+  };
+  const handleIntroPointerUp = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    introDragRef.current = null;
+  };
 
   const baseFrames = car.spinFrames && car.spinFrames.length > 0 ? car.spinFrames : null;
   const trunkFrames =
@@ -69,6 +104,13 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
   const dragStartRef = useRef<{ x: number; yaw: number } | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  // Smooth image turntable: every frame is decoded once up front (ImageBitmap) and
+  // drawn on a canvas, so dragging never waits for the browser to decode a new <img>.
+  const bmCanvasRef = useRef<HTMLCanvasElement | null>(null);
+  const bitmapsRef = useRef<(ImageBitmap | null)[]>([]);
+  const [bmReady, setBmReady] = useState(false);
+  const bmReadyRef = useRef(false);
+  bmReadyRef.current = bmReady;
   const capturedFramesRef = useRef<HTMLCanvasElement[]>([]);
   const isCapturingRef = useRef<boolean>(false);
   const autoSpinRef = useRef<boolean>(false);
@@ -109,6 +151,75 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
       img.src = src;
     });
   }, [car]);
+
+  // Decode all frames of the active set (a few at a time) into ImageBitmaps
+  useEffect(() => {
+    setBmReady(false);
+    if (isVideoMode || !frames || typeof createImageBitmap !== 'function') return;
+    let cancelled = false;
+    const urls = frames;
+    const list: (ImageBitmap | null)[] = new Array(urls.length).fill(null);
+    bitmapsRef.current = list;
+    const maxW = window.innerWidth < 768 ? 880 : 1280;
+    let next = 0;
+    const worker = async () => {
+      while (!cancelled) {
+        const i = next++;
+        if (i >= urls.length) return;
+        try {
+          const blob = await (await fetch(urls[i])).blob();
+          let bmp = await createImageBitmap(blob);
+          if (bmp.width > maxW) {
+            const oc = document.createElement('canvas');
+            oc.width = maxW;
+            oc.height = Math.round((bmp.height * maxW) / bmp.width);
+            oc.getContext('2d')?.drawImage(bmp, 0, 0, oc.width, oc.height);
+            bmp.close();
+            bmp = await createImageBitmap(oc);
+          }
+          if (cancelled) {
+            bmp.close();
+            return;
+          }
+          list[i] = bmp;
+        } catch {
+          // a missing frame just stays empty
+        }
+      }
+    };
+    Promise.all([worker(), worker(), worker(), worker(), worker(), worker()]).then(() => {
+      if (!cancelled) setBmReady(true);
+    });
+    return () => {
+      cancelled = true;
+      list.forEach((b) => b?.close());
+      bitmapsRef.current = [];
+    };
+  }, [frames, isVideoMode]);
+
+  const drawBm = useCallback((idx: number) => {
+    const canvas = bmCanvasRef.current;
+    const bmp = bitmapsRef.current[idx];
+    if (!canvas || !bmp) return;
+    if (canvas.width !== bmp.width || canvas.height !== bmp.height) {
+      canvas.width = bmp.width;
+      canvas.height = bmp.height;
+    }
+    canvas.getContext('2d')?.drawImage(bmp, 0, 0);
+  }, []);
+
+  // Which frame belongs to a given turn angle
+  const frameIndexForYaw = (deg: number): number => {
+    if (!frames) return 0;
+    if (isPartialArc) {
+      const clamped = Math.min(Math.max(deg, 0), arcDeg);
+      return Math.round((clamped / arcDeg) * (frames.length - 1));
+    }
+    const norm = ((deg % 360) + 360) % 360;
+    return Math.round(norm / (360 / frames.length)) % frames.length;
+  };
+  const frameIndexFnRef = useRef(frameIndexForYaw);
+  frameIndexFnRef.current = frameIndexForYaw;
 
   // Capture frames from the MOUNTED <video> by playing once at 4x speed when video loads
   useEffect(() => {
@@ -335,6 +446,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
           ? Math.min(Math.max(rawYaw, 0), arcDeg)
           : ((rawYaw % 360) + 360) % 360;
       setYawDeg(nextYaw);
+      if (!isVideoMode && bmReadyRef.current) drawBm(frameIndexFnRef.current(nextYaw));
       if (isVideoMode) {
         if (framesReady) {
           drawCachedFrame(nextYaw);
@@ -343,7 +455,7 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
         }
       }
     },
-    [isDragging, isVideoMode, framesReady, drawCachedFrame, scrubVideoFallback, isPartialArc, arcDeg]
+    [isDragging, isVideoMode, framesReady, drawCachedFrame, scrubVideoFallback, isPartialArc, arcDeg, drawBm]
   );
 
   const handlePointerUp = useCallback((e: React.PointerEvent<HTMLDivElement>) => {
@@ -384,6 +496,20 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
     const isRearView = normalizedYaw >= 90 && normalizedYaw <= 270;
     activePhotoSrc = isRearView ? car.rearPhotoUrl : car.heroPhotoUrl || '';
   }
+
+  const usesFramePhoto =
+    !(showRear && !isVideoMode && !trunkFrames && car.rearPhotoUrl) &&
+    !isOpenImageActive &&
+    Boolean(frames);
+  const showBmCanvas =
+    !isVideoMode &&
+    bmReady &&
+    usesFramePhoto &&
+    !(car.introVideoUrl && !showRear && !isOpenImageActive);
+
+  useEffect(() => {
+    if (showBmCanvas) drawBm(activeFrameIndex);
+  }, [showBmCanvas, activeFrameIndex, drawBm]);
 
   const brightnessClass = lotDayMode
     ? 'brightness-[1.42] contrast-[1.06] saturate-[1.14]'
@@ -437,6 +563,43 @@ export const InteractivePhotoStage: React.FC<InteractivePhotoStageProps> = ({
               } ${showCanvasLayer ? 'opacity-100' : 'opacity-0'}`}
             />
           </>
+        ) : car.introVideoUrl && !showRear && !isOpenImageActive ? (
+          <>
+            {/* Cinematic intro: plays once, then stays on its last frame */}
+            <video
+              ref={introVideoRef}
+              key={`${car.id}-intro-${introPlayKey}`}
+              src={car.introVideoUrl}
+              poster={car.heroPhotoUrl}
+              autoPlay
+              muted
+              playsInline
+              preload="auto"
+              className={`absolute inset-0 w-full h-full object-contain sm:object-cover pointer-events-none ${brightnessClass}`}
+            />
+            {/* Invisible layer that turns horizontal drags into moving through the clip */}
+            <div
+              onPointerDown={handleIntroPointerDown}
+              onPointerMove={handleIntroPointerMove}
+              onPointerUp={handleIntroPointerUp}
+              onPointerCancel={handleIntroPointerUp}
+              className="absolute inset-0 z-10 cursor-ew-resize touch-none"
+            />
+            <button
+              type="button"
+              onPointerDown={(e) => e.stopPropagation()}
+              onClick={() => setIntroPlayKey((k) => k + 1)}
+              className="absolute bottom-2 left-2 sm:bottom-24 sm:left-6 z-20 h-9 px-3.5 rounded-full bg-black/70 hover:bg-black/85 border border-white/20 text-white text-xs font-semibold inline-flex items-center gap-1.5 backdrop-blur-md cursor-pointer"
+            >
+              <RotateCcw className="w-3.5 h-3.5 text-amber-400" />
+              {lang === 'hy' ? 'Կրկնել' : 'Replay'}
+            </button>
+          </>
+        ) : showBmCanvas ? (
+          <canvas
+            ref={bmCanvasRef}
+            className={`absolute inset-0 w-full h-full object-contain sm:object-cover pointer-events-none ${brightnessClass}`}
+          />
         ) : (
           <img
             src={activePhotoSrc}
