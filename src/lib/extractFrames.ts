@@ -12,9 +12,9 @@ export interface ExtractOptions {
 }
 
 export async function extractFrames(file: File, opts: ExtractOptions = {}): Promise<Blob[]> {
-  const count = opts.count ?? 48;
+  const count = opts.count ?? 70;
   const maxWidth = opts.maxWidth ?? 960;
-  const quality = opts.quality ?? 0.78;
+  const quality = opts.quality ?? 0.72;
 
   const url = URL.createObjectURL(file);
   const video = document.createElement('video');
@@ -55,7 +55,11 @@ export async function extractFrames(file: File, opts: ExtractOptions = {}): Prom
         video.currentTime = t;
       });
       ctx.drawImage(video, 0, 0, w, h);
-      const blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', quality));
+      // WebP is ~30% lighter than JPEG; fall back to JPEG if the browser can't encode it
+      let blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/webp', quality));
+      if (!blob || blob.type !== 'image/webp') {
+        blob = await new Promise<Blob | null>((res) => canvas.toBlob(res, 'image/jpeg', quality + 0.06));
+      }
       if (!blob) throw new Error('Could not create a frame');
       frames.push(blob);
       opts.onProgress?.(i + 1, count);

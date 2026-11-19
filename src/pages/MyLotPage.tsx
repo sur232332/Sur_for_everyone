@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/examples/jsm/controls/OrbitControls.js';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader.js';
+import { disposeCarModel, loadCarModel, tintCarPaint } from '../three/carModels';
 import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
 import { Plus, X, Trash2, Pencil, Shield, ClipboardCheck, Droplets, Tag, Wrench, Sparkles, LogIn } from 'lucide-react';
 import { supabase } from '../lib/supabase';
@@ -9,9 +10,18 @@ import { AuthModal } from '../components/AuthModal';
 import type { Language, PageRoute } from '../types/hardware';
 
 // "My Lot" — every signed-in user keeps their own cars here.
-// The cars are built in code (no downloaded models or images), so the look is fully our own.
+// Each body type shows one of the real car models from the 3D Auto Gallery
+// (same cached file, so it is never downloaded twice). Built-in shapes are only a fallback.
 
 type BodyType = 'sedan' | 'suv' | 'pickup' | 'coupe' | 'gt';
+
+const BODY_MODEL: Record<BodyType, string> = {
+  gt: '/models/opt-porsche-911-gt3.glb',
+  coupe: '/models/opt-ferrari-f8-tributo.glb',
+  sedan: '/models/opt-bentley-continental-gt.glb',
+  suv: '/models/opt-lamborghini-urus.glb',
+  pickup: '/models/opt-mercedes-amg-g63.glb',
+};
 
 interface MyCar {
   id: string;
@@ -176,7 +186,8 @@ function createLotScene(host: HTMLDivElement): LotScene {
 
   const carRoot = new THREE.Group();
   scene.add(carRoot);
-  let cover: THREE.Mesh | null = null;
+  let cover: THREE.Object3D | null = null;
+  let coverMaterial: THREE.MeshStandardMaterial | null = null;
   let lights: THREE.Mesh[] = [];
   let covered = true;
   let coverT = 0; // 0 = on the car, 1 = slid away
@@ -184,6 +195,11 @@ function createLotScene(host: HTMLDivElement): LotScene {
   const disposables: { dispose: () => void }[] = [noise];
 
   const clearCar = () => {
+    // Real models share cached geometry: only free their own paint copies
+    carRoot.children.filter((c) => c.userData.sharedModel).forEach((c) => {
+      disposeCarModel(c);
+      carRoot.remove(c);
+    });
     carRoot.traverse((o) => {
       const m = o as THREE.Mesh;
       if (m.geometry) m.geometry.dispose();
@@ -193,6 +209,7 @@ function createLotScene(host: HTMLDivElement): LotScene {
     });
     carRoot.clear();
     cover = null;
+    coverMaterial = null;
     lights = [];
   };
 
@@ -265,6 +282,7 @@ function createLotScene(host: HTMLDivElement): LotScene {
       bumpScale: 2.2,
       transparent: true,
     });
+    coverMaterial = coverMat;
     cover = new THREE.Mesh(g, coverMat);
     cover.scale.set(s * 1.05, s * 1.12, s * 1.08);
     cover.position.y = -0.02;
@@ -277,7 +295,55 @@ function createLotScene(host: HTMLDivElement): LotScene {
     carRoot.scale.setScalar(1.15);
   };
 
+  const buildRealCar = (model: THREE.Group, color: string) => {
+    model.rotation.y = Math.PI / 2; // models are long along Z, this stage uses X
+    model.userData.sharedModel = true;
+    tintCarPaint(model, color);
+    carRoot.add(model);
+
+    const coverMat = new THREE.MeshStandardMaterial({
+      color: 0xdedee2,
+      roughness: 1,
+      metalness: 0,
+      bumpMap: noise,
+      bumpScale: 2.2,
+      transparent: true,
+    });
+    const coverObj = model.clone(true);
+    coverObj.userData.sharedModel = true;
+    coverObj.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (m.isMesh) {
+        m.material = coverMat;
+        m.castShadow = true;
+      }
+    });
+    coverObj.scale.set(1.05, 1.08, 1.05);
+    carRoot.add(coverObj);
+    disposables.push(coverMat);
+    cover = coverObj;
+    coverMaterial = coverMat;
+    covered = true;
+    coverT = 0;
+    applyCover();
+    carRoot.scale.setScalar(1);
+  };
+
   const setCar = (type: BodyType, color: string) => {
+    clearCar();
+    const token = ++carToken;
+    loadCarModel(BODY_MODEL[type], 4.8)
+      .then((model) => {
+        if (token === carToken) buildRealCar(model, color);
+        else disposeCarModel(model);
+      })
+      .catch((err) => {
+        console.warn('Real car model failed, using built-in shape', err);
+        if (token === carToken) setBuiltInCar(type, color);
+      });
+  };
+
+  const setBuiltInCar = (type: BodyType, color: string) => {
     clearCar();
     const token = ++carToken;
     if (type === 'gt') {
@@ -287,7 +353,7 @@ function createLotScene(host: HTMLDivElement): LotScene {
         })
         .catch((err) => {
           console.error('GT model failed', err);
-          if (token === carToken) setCar('coupe', color);
+          if (token === carToken) setBuiltInCar('coupe', color);
         });
       return;
     }
@@ -351,6 +417,7 @@ function createLotScene(host: HTMLDivElement): LotScene {
       bumpScale: 2.2,
       transparent: true,
     });
+    coverMaterial = coverMat;
     cover = new THREE.Mesh(bodyGeo, coverMat);
     cover.scale.set(1.045, 1.12, 1.07);
     cover.position.y = -0.02;
@@ -370,7 +437,7 @@ function createLotScene(host: HTMLDivElement): LotScene {
     cover.position.x = ease * 7;
     cover.position.y = -0.02 + Math.sin(ease * Math.PI) * 0.9;
     cover.rotation.z = -ease * 0.25;
-    (cover.material as THREE.MeshStandardMaterial).opacity = 1 - Math.max(0, (t - 0.7) / 0.3);
+    if (coverMaterial) coverMaterial.opacity = 1 - Math.max(0, (t - 0.7) / 0.3);
     cover.visible = t < 0.999;
     const on = Math.min(1, Math.max(0, (t - 0.55) / 0.45));
     lights.forEach((l, i) => {

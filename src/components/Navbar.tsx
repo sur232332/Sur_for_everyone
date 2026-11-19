@@ -37,12 +37,11 @@ export const Navbar: React.FC<NavbarProps> = ({
   const t = TRANSLATIONS[lang];
 
   const links: Array<{ id: PageRoute; label: string }> = [
+    { id: 'story', label: lang === 'hy' ? 'Պատմություն' : 'Story' },
     { id: 'motor-gallery', label: t.nav.motorGallery },
     { id: 'catalog', label: lang === 'hy' ? 'Կատալոգ' : 'Catalog' },
     { id: 'my-lot', label: lang === 'hy' ? 'Իմ Լոտը' : 'My Lot' },
-    { id: 'story', label: lang === 'hy' ? 'Պատմություն' : 'Story' },
     { id: 'home-guide', label: t.nav.homeGuide },
-    { id: 'showroom', label: t.nav.showroom },
     { id: 'compare', label: t.nav.compare },
   ];
 
@@ -58,13 +57,13 @@ export const Navbar: React.FC<NavbarProps> = ({
       className="sticky top-0 z-50 w-full border-b border-[var(--border-hairline)] header-opaque bg-[var(--bg-surface)] backdrop-blur-md shadow-xs"
       style={{ backgroundColor: 'var(--bg-surface)' }}
     >
-      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-6">
+      <div className="max-w-7xl 2xl:max-w-screen-2xl mx-auto px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4 md:gap-6">
         {/* Zone 1: 3D Visual Brand Logo */}
         <BrandLogo3D onClick={() => handleLinkClick('home-guide')} />
 
         {/* Zone 2: Clean Typographic Nav Links (Desktop) */}
         <nav
-          className="hidden lg:flex items-center gap-5 xl:gap-7 text-sm font-medium min-w-0"
+          className="hidden xl:flex items-center gap-4 2xl:gap-7 text-sm font-medium min-w-0"
           aria-label="Primary Navigation"
         >
           {links.map((link) => {
@@ -101,7 +100,7 @@ export const Navbar: React.FC<NavbarProps> = ({
 
           {/* 3-Way Currency Switcher (USD / EUR / AMD) — visible on md+, collapsed into menu on mobile */}
           <div
-            className="hidden md:inline-flex items-center h-10 p-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-xs font-mono-tech shrink-0"
+            className="hidden 2xl:inline-flex items-center h-10 p-1 rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-xs font-mono-tech shrink-0"
             role="group"
             aria-label="Currency selector"
           >
@@ -172,7 +171,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => setMobileMenuOpen((v) => !v)}
-            className="lg:hidden h-9 w-9 sm:h-10 sm:w-10 inline-flex items-center justify-center rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-elevated)] shrink-0 cursor-pointer"
+            className="2xl:hidden h-9 w-9 sm:h-10 sm:w-10 inline-flex items-center justify-center rounded-lg border border-[var(--border-hairline)] bg-[var(--bg-elevated)] shrink-0 cursor-pointer"
             aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
             aria-expanded={mobileMenuOpen}
           >
@@ -184,10 +183,10 @@ export const Navbar: React.FC<NavbarProps> = ({
       {/* Mobile & Tablet Navigation Drawer (Fully Opaque) */}
       {mobileMenuOpen && (
         <div
-          className="lg:hidden border-t border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-4 space-y-3 shadow-xl"
+          className="2xl:hidden border-t border-[var(--border-hairline)] bg-[var(--bg-surface)] px-4 py-4 space-y-3 shadow-xl"
           style={{ backgroundColor: 'var(--bg-surface)' }}
         >
-          <div className="space-y-1">
+          <div className="space-y-1 xl:hidden">
             {links.map((link) => {
               const active = route === link.id;
               return (

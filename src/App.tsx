@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { DEVICES, getDeviceById } from './data/devices';
 import { useLivePricing } from './hooks/useLivePricing';
@@ -6,16 +6,18 @@ import { Navbar } from './components/Navbar';
 import { CartDrawer } from './components/CartDrawer';
 import { ARViewerModal } from './components/ARViewerModal';
 import { ErrorBoundary } from './components/ErrorBoundary';
-import { ShowroomPage } from './pages/ShowroomPage';
-import { BrandPage } from './pages/BrandPage';
-import { ComparePage } from './pages/ComparePage';
-import { HomeGuidePage } from './pages/HomeGuidePage';
-import { MotorGalleryPage } from './pages/MotorGalleryPage';
-import { CatalogPage } from './pages/CatalogPage';
-import { MyLotPage } from './pages/MyLotPage';
-import { ScrollStoryPage } from './pages/ScrollStoryPage';
 import type { Listing } from './data/listings';
 import { CartItem, Currency, DeviceSpec, Language, PageRoute } from './types/hardware';
+
+// Pages load only when opened, so the first visit downloads less code
+const ShowroomPage = lazy(() => import('./pages/ShowroomPage').then((m) => ({ default: m.ShowroomPage })));
+const BrandPage = lazy(() => import('./pages/BrandPage').then((m) => ({ default: m.BrandPage })));
+const HomeGuidePage = lazy(() => import('./pages/HomeGuidePage').then((m) => ({ default: m.HomeGuidePage })));
+const MotorGalleryPage = lazy(() => import('./pages/MotorGalleryPage').then((m) => ({ default: m.MotorGalleryPage })));
+const CatalogPage = lazy(() => import('./pages/CatalogPage').then((m) => ({ default: m.CatalogPage })));
+const MyLotPage = lazy(() => import('./pages/MyLotPage').then((m) => ({ default: m.MyLotPage })));
+const ComparePage = lazy(() => import('./pages/ComparePage').then((m) => ({ default: m.ComparePage })));
+const ScrollStoryPage = lazy(() => import('./pages/ScrollStoryPage').then((m) => ({ default: m.ScrollStoryPage })));
 
 const STORAGE_KEYS = {
   CART: 'sp_cart_v1',
@@ -280,6 +282,13 @@ export default function App() {
               transition={{ duration: 0.22, ease: 'easeOut' }}
             >
               <ErrorBoundary>
+                <Suspense
+                  fallback={
+                    <div className="min-h-[60vh] flex items-center justify-center text-sm text-[var(--text-secondary)]">
+                      {lang === 'hy' ? 'Բեռնվում է…' : 'Loading…'}
+                    </div>
+                  }
+                >
                 {route === 'motor-gallery' && (
                   <MotorGalleryPage
                     lang={lang}
@@ -372,6 +381,7 @@ export default function App() {
                     onOpenCart={() => setCartOpen(true)}
                   />
                 )}
+                </Suspense>
               </ErrorBoundary>
             </motion.div>
           </AnimatePresence>

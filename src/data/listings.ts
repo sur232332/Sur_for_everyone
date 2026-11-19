@@ -23,7 +23,9 @@ export type ListingCategory = 'cars' | 'tech';
 export type ListingViewer =
   | { type: 'car-360'; carId: string }
   | { type: 'device-3d'; deviceId: string; brand: BrandId }
-  | { type: 'photos'; photos: string[]; spin?: boolean };
+  | { type: 'photos'; photos: string[]; spin?: boolean }
+  /** opens its own full-screen scroll window (frames from a video) */
+  | { type: 'scroll-story'; frames: string[]; mobileFrames?: string[]; deviceId: string };
 
 export interface Listing {
   id: string;
@@ -89,6 +91,17 @@ const CAR_LISTINGS: Listing[] = LUXURY_CARS.map((car, i): Listing => ({
   viewer: { type: 'car-360', carId: car.id },
 }));
 
+// Devices that have their own scroll-through video window in the Catalog
+const scrollFrames = (dir: string, count: number) =>
+  Array.from({ length: count }, (_, k) => `/cars/frames/${dir}/${String(k + 1).padStart(3, '0')}.jpg`);
+const SCROLL_STORY_FRAMES: Record<string, string[]> = {
+  'galaxy-s24-ultra': scrollFrames('s24-ultra', 120),
+};
+// lighter 720px set for phones (3x less data and memory)
+const SCROLL_STORY_MOBILE_FRAMES: Record<string, string[]> = {
+  'galaxy-s24-ultra': scrollFrames('s24-ultra-m', 120),
+};
+
 const TECH_LISTINGS: Listing[] = DEVICES.map((device, i): Listing => ({
   id: `tech-${device.id}`,
   category: 'tech',
@@ -99,7 +112,10 @@ const TECH_LISTINGS: Listing[] = DEVICES.map((device, i): Listing => ({
   brand: device.brand.charAt(0).toUpperCase() + device.brand.slice(1),
   year: Number(device.releaseYear) || undefined,
   is8k: true,
-  viewer: { type: 'device-3d', deviceId: device.id, brand: device.brand },
+  viewer: SCROLL_STORY_FRAMES[device.id]
+    ? { type: 'scroll-story', frames: SCROLL_STORY_FRAMES[device.id], mobileFrames: SCROLL_STORY_MOBILE_FRAMES[device.id], deviceId: device.id }
+    : { type: 'device-3d', deviceId: device.id, brand: device.brand },
+  imageUrl: SCROLL_STORY_FRAMES[device.id]?.[0],
   deviceCategory: device.category,
   colorHex: device.finishes[0]?.hex,
 }));

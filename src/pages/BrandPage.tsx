@@ -4,7 +4,6 @@ import {
   Check,
   ExternalLink,
   Eye,
-  GitCompareArrows,
   Heart,
   RotateCw,
   ShoppingBag,
@@ -36,7 +35,7 @@ interface BrandPageProps {
   priceAlerts: Record<string, number>;
   onTogglePriceAlert: (deviceId: string, targetUsd: number) => void;
   onNavigate: (route: PageRoute, deviceId?: string) => void;
-  onCompareDevice: (deviceId: string) => void;
+  onCompareDevice?: (deviceId: string) => void;
   onOpenAR: (device: DeviceSpec, finishId?: string) => void;
   onAddToCart: (deviceId: string, finishId: string, storageId: string) => void;
   onRefreshPrice?: (deviceId: string) => void;
@@ -498,14 +497,6 @@ export const BrandPage: React.FC<BrandPageProps> = ({
               >
                 <Eye className="w-4 h-4" />
                 <span>{t.brandPage.viewInAr}</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => onCompareDevice(device.id)}
-                className="py-3 rounded-xl border border-[var(--border-hairline)] bg-[var(--bg-elevated)] text-xs sm:text-sm font-semibold inline-flex items-center justify-center gap-2 hover:border-[var(--accent)] transition-colors cursor-pointer"
-              >
-                <GitCompareArrows className="w-4 h-4" />
-                <span>{t.brandPage.compareThis}</span>
               </button>
             </div>
           </div>

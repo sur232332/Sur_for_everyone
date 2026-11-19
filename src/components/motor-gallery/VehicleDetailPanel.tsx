@@ -116,6 +116,21 @@ export const VehicleDetailPanel: React.FC<VehicleDetailPanelProps> = ({
         </div>
         )}
 
+        {car.modelCredit && (
+          <p className="text-[10px] leading-snug text-white/45">
+            {lang === 'hy' ? '3D մոդել՝ ' : '3D model: '}
+            <a
+              href={car.modelCredit.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="underline hover:text-white/80"
+            >
+              "{car.modelCredit.title}"
+            </a>{' '}
+            — {car.modelCredit.author} · {car.modelCredit.license}
+          </p>
+        )}
+
         {/* 2. Title, Year & Price */}
         <div>
           <div className="flex items-baseline justify-between gap-2">

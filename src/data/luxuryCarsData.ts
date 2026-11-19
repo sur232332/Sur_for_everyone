@@ -37,6 +37,10 @@ export interface LuxuryCarSpec {
   doorsOpenPhotoUrl?: string;
   /** Optional real 3D model (.glb) placed in /public/models, e.g. '/models/porsche-911-gt3.glb' */
   glbUrl?: string;
+  /** Author credit for the 3D model (required by its CC-BY license) */
+  modelCredit?: { title: string; author: string; url: string; license: string };
+  /** Repaint the .glb body with `colorHex` (used when a car borrows another car's model) */
+  repaintGlb?: boolean;
   droneHotspot: {
     left: string;
     top: string;
@@ -84,6 +88,13 @@ export const spinFrameUrls = (slug: string, count = 72, ext = 'jpg'): string[] =
 export const LUXURY_CARS: LuxuryCarSpec[] = [
   {
     id: 'porsche-911-gt3',
+    glbUrl: '/models/opt-porsche-911-gt3.glb',
+    modelCredit: {
+      title: '2022 Porsche 911 GT3 (992)',
+      author: 'Ddiaz Design',
+      url: 'https://sketchfab.com/3d-models/2022-porsche-911-gt3-992-ba01afbaf32846e598db315be3507db3',
+      license: 'CC BY-NC-SA 4.0',
+    },
     stockNumber: 'KLB-992GT3',
     year: 2023,
     make: 'Porsche',
@@ -98,7 +109,7 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     caliperColorHex: '#facc15',
     doorType: 'standard',
     enginePitch: 68,
-    heroPhotoUrl: '/cars/porsche-911-gt3-studio.jpg',
+    heroPhotoUrl: '/cars/porsche-911-gt3-studio.webp',
     spinFrames: spinFrameUrls('porsche-show', 100),
     openingsInSpin: true,
     droneHotspot: {
@@ -141,6 +152,13 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
   },
   {
     id: 'lamborghini-urus',
+    glbUrl: '/models/opt-lamborghini-urus.glb',
+    modelCredit: {
+      title: '2019 Lamborghini Urus',
+      author: 'Ddiaz Design',
+      url: 'https://sketchfab.com/3d-models/2019-lamborghini-urus-9ef2fd625ba54ea39226ea5d043c0e13',
+      license: 'CC BY-NC-SA 4.0',
+    },
     stockNumber: 'KLB-URUS23',
     year: 2023,
     make: 'Lamborghini',
@@ -155,9 +173,9 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     caliperColorHex: '#eab308',
     doorType: 'standard',
     enginePitch: 52,
-    heroPhotoUrl: '/cars/lamborghini-urus.jpg',
-    introVideoUrl: '/cars/lamborghini-urus-intro-v2.mp4',
-    rearPhotoUrl: '/cars/lamborghini-urus-rear.jpg',
+    heroPhotoUrl: '/cars/lamborghini-urus.webp',
+    introVideoUrl: '/cars/small-lamborghini-urus-intro-v2.mp4',
+    rearPhotoUrl: '/cars/lamborghini-urus-rear.webp',
     droneHotspot: {
       left: '50.0%',
       top: '31%',
@@ -198,6 +216,13 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
   },
   {
     id: 'mercedes-amg-g63',
+    glbUrl: '/models/opt-mercedes-amg-g63.glb',
+    modelCredit: {
+      title: '2015 Mercedes-Benz G-Class G 63 AMG',
+      author: 'Ddiaz Design',
+      url: 'https://sketchfab.com/3d-models/2015-mercedes-benz-g-class-g-63-amg-61c922248b59447892ce34ba0fc290f3',
+      license: 'CC BY-NC-SA 4.0',
+    },
     stockNumber: 'KLB-G63AMG',
     year: 2022,
     make: 'Mercedes-AMG',
@@ -212,7 +237,7 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     caliperColorHex: '#ef4444',
     doorType: 'standard',
     enginePitch: 44,
-    heroPhotoUrl: '/cars/mercedes-amg-g63.jpg',
+    heroPhotoUrl: '/cars/mercedes-amg-g63.webp',
     droneHotspot: {
       left: '70.2%',
       top: '31%',
@@ -253,6 +278,15 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
   },
   {
     id: 'porsche-911-turbos',
+    // No own model yet: borrows the 911 GT3 (992) body, repainted in its own colour
+    glbUrl: '/models/opt-porsche-911-gt3.glb',
+    repaintGlb: true,
+    modelCredit: {
+      title: '2022 Porsche 911 GT3 (992)',
+      author: 'Ddiaz Design',
+      url: 'https://sketchfab.com/3d-models/2022-porsche-911-gt3-992-ba01afbaf32846e598db315be3507db3',
+      license: 'CC BY-NC-SA 4.0',
+    },
     stockNumber: 'KLB-992TBS',
     year: 2023,
     make: 'Porsche',
@@ -267,8 +301,8 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     caliperColorHex: '#facc15',
     doorType: 'standard',
     enginePitch: 62,
-    heroPhotoUrl: '/cars/porsche-911-turbos.jpg',
-    rearPhotoUrl: '/cars/porsche-911-turbos-rear.jpg',
+    heroPhotoUrl: '/cars/porsche-911-turbos.webp',
+    rearPhotoUrl: '/cars/porsche-911-turbos-rear.webp',
     droneHotspot: {
       left: '30.0%',
       top: '75%',
@@ -309,6 +343,13 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
   },
   {
     id: 'ferrari-f8-tributo',
+    glbUrl: '/models/opt-ferrari-f8-tributo.glb',
+    modelCredit: {
+      title: '2020 Ferrari F8 Tributo',
+      author: 'Ddiaz Design',
+      url: 'https://sketchfab.com/3d-models/2020-ferrari-f8-tributo-8a86c4d634f64f8b8ee836bc93fa6ac8',
+      license: 'CC BY-NC-SA 4.0',
+    },
     stockNumber: 'KLB-F8TRIB',
     year: 2022,
     make: 'Ferrari',
@@ -323,7 +364,7 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     caliperColorHex: '#facc15',
     doorType: 'butterfly',
     enginePitch: 74,
-    heroPhotoUrl: '/cars/ferrari-f8-tributo.jpg',
+    heroPhotoUrl: '/cars/ferrari-f8-tributo.webp',
     droneHotspot: {
       left: '50.0%',
       top: '75%',
@@ -364,6 +405,13 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
   },
   {
     id: 'bentley-continental-gt',
+    glbUrl: '/models/opt-bentley-continental-gt.glb',
+    modelCredit: {
+      title: '2025 Bentley Continental GT Speed',
+      author: 'OUTPISTON',
+      url: 'https://sketchfab.com/3d-models/2025-bentley-continental-gt-speed-ffcac9aba75f4d66a09bf09228bfc0fd',
+      license: 'CC BY-NC-SA 4.0',
+    },
     stockNumber: 'KLB-CONTGT',
     year: 2023,
     make: 'Bentley',
@@ -378,7 +426,7 @@ export const LUXURY_CARS: LuxuryCarSpec[] = [
     caliperColorHex: '#dc2626',
     doorType: 'standard',
     enginePitch: 48,
-    heroPhotoUrl: '/cars/bentley-continental-gt.jpg',
+    heroPhotoUrl: '/cars/bentley-continental-gt.webp',
     droneHotspot: {
       left: '70.5%',
       top: '75%',

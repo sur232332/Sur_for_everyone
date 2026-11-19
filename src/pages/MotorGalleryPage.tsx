@@ -2,8 +2,7 @@ import { CarHistoryScroll } from '../components/motor-gallery/CarHistoryScroll';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { DRACOLoader } from 'three/addons/loaders/DRACOLoader.js';
+import { disposeCarModel, loadCarModel, tintCarPaint } from '../three/carModels';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
@@ -97,6 +96,8 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   const matchedCarIdsRef = useRef<Set<string>>(new Set(LUXURY_CARS.map((c) => c.id)));
   const rigsMapRef = useRef<Map<string, CarRig3D>>(new Map());
   const glbLoadedRef = useRef<Set<string>>(new Set());
+  // Cars whose bundled .glb is already being downloaded (so we never fetch twice)
+  const glbRequestedRef = useRef<Set<string>>(new Set());
   const cameraTargetPosRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 23.5, 0.01));
   const cameraTargetLookRef = useRef<THREE.Vector3>(new THREE.Vector3(0, 0, 0));
   const isTransitioningCameraRef = useRef<boolean>(false);
@@ -190,6 +191,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
     setSelectedCarId(car ? car.id : null);
     if (car) {
       setSelectedCarViewMode(glbLoadedRef.current.has(car.id) ? '3d' : 'photo');
+      requestBundledGlb(car);
     }
 
     if (!car) {
@@ -263,6 +265,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
       for (const mat of rig.paintMaterials) {
         mat.color.set(hex);
       }
+      tintCarPaint(rig.customModelGroup, hex);
     }
   };
 
@@ -286,38 +289,16 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
   };
 
   // Loads a .glb into a car's rig (used by the upload button AND by auto-load from `glbUrl`)
-  const applyGlbToRig = (rig: CarRig3D, carId: string, url: string, displayName: string) => {
-    const draco = new DRACOLoader();
-    draco.setDecoderPath('https://www.gstatic.com/draco/versioned/decoders/1.5.7/');
-    const loader = new GLTFLoader();
-    loader.setDRACOLoader(draco);
-
-    loader.load(
-      url,
-      (gltf) => {
-        while (rig.customModelGroup.children.length > 0) {
-          const child = rig.customModelGroup.children[0];
-          rig.customModelGroup.remove(child);
-        }
-
-        const model = gltf.scene;
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-
-        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-        const scale = 4.4 / maxDim;
-        model.scale.setScalar(scale);
-
-        model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
+  const applyGlbToRig = (rig: CarRig3D, carId: string, url: string, displayName: string, paintHex?: string) => {
+    loadCarModel(url, 4.4)
+      .then((model) => {
+        rig.customModelGroup.children.forEach((c) => disposeCarModel(c));
+        rig.customModelGroup.clear();
 
         model.traverse((obj) => {
           obj.userData.carId = carId;
-          if (obj instanceof THREE.Mesh) {
-            obj.castShadow = true;
-            obj.receiveShadow = true;
-          }
         });
+        if (paintHex) tintCarPaint(model, paintHex);
 
         rig.customModelGroup.add(model);
         rig.customModelGroup.visible = true;
@@ -327,15 +308,27 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
         });
 
         glbLoadedRef.current.add(carId);
+        // If the user is looking at this car right now, switch to the real 3D model
+        if (selectedCarIdRef.current === carId) setSelectedCarViewMode('3d');
         setCustomModelNames((prev) => ({ ...prev, [carId]: displayName }));
         setCustomModelUrls((prev) => ({ ...prev, [carId]: url }));
-        draco.dispose();
-      },
-      undefined,
-      (err) => {
+      })
+      .catch((err) => {
         console.warn(`Could not load 3D model "${url}" for ${carId}`, err);
-        draco.dispose();
-      }
+      });
+  };
+
+  // Downloads a car's bundled .glb (from `glbUrl`) only once, when it is needed
+  const requestBundledGlb = (car: LuxuryCarSpec) => {
+    const rig = rigsMapRef.current?.get(car.id);
+    if (!rig || !car.glbUrl || glbRequestedRef.current.has(car.id)) return;
+    glbRequestedRef.current.add(car.id);
+    applyGlbToRig(
+      rig,
+      car.id,
+      car.glbUrl,
+      car.glbUrl.split('/').pop() || 'model.glb',
+      car.repaintGlb ? car.colorHex : undefined
     );
   };
 
@@ -438,13 +431,21 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
       rigsMap.set(carSpec.id, rig);
     }
     rigsMapRef.current = rigsMap;
+    glbRequestedRef.current.clear();
+    glbLoadedRef.current.clear();
 
-    // Auto-load a bundled .glb for every car that has `glbUrl` in luxuryCarsData.ts
-    for (const carSpec of LUXURY_CARS) {
-      const rig = rigsMap.get(carSpec.id);
-      if (rig && carSpec.glbUrl) {
-        applyGlbToRig(rig, carSpec.id, carSpec.glbUrl, carSpec.glbUrl.split('/').pop() || 'model.glb');
-      }
+    // Bundled .glb models load lazily: on phones only when a car is tapped,
+    // on bigger screens one by one in the background after the page is shown.
+    let bgTimer = 0;
+    if (window.innerWidth >= 768) {
+      const queue = LUXURY_CARS.filter((c) => c.glbUrl);
+      const next = () => {
+        const car = queue.shift();
+        if (!car) return;
+        requestBundledGlb(car);
+        bgTimer = window.setTimeout(next, 1500);
+      };
+      bgTimer = window.setTimeout(next, 2500);
     }
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -658,6 +659,7 @@ export const MotorGalleryPage: React.FC<MotorGalleryPageProps> = ({
 
     return () => {
       window.removeEventListener('resize', handleResize);
+      window.clearTimeout(bgTimer);
       cancelAnimationFrame(animFrameId);
       controls.removeEventListener('start', onControlStart);
       renderer.domElement.removeEventListener('pointerdown', onPointerDown);

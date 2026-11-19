@@ -1,7 +1,7 @@
 import React, { useEffect, useRef } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { loadCarModel, tintCarPaint } from '../../three/carModels';
 import { RotateCw } from 'lucide-react';
 import { LuxuryCarSpec } from '../../data/luxuryCarsData';
 import { buildLuxuryCarRig, CarRig3D } from '../../three/buildLuxuryCars';
@@ -35,6 +35,8 @@ export const MiniCarViewer3D: React.FC<MiniCarViewer3DProps> = ({
   const doorsOpenRef = useRef<boolean>(doorsOpen);
   const trunkOpenRef = useRef<boolean>(trunkOpen);
   const engineRunningRef = useRef<boolean>(engineRunning);
+  const activeColorRef = useRef(activeColorHex);
+  activeColorRef.current = activeColorHex;
 
   useEffect(() => {
     doorsOpenRef.current = doorsOpen;
@@ -55,6 +57,7 @@ export const MiniCarViewer3D: React.FC<MiniCarViewer3DProps> = ({
     for (const mat of rig.paintMaterials) {
       mat.color.set(activeColorHex);
     }
+    tintCarPaint(rig.customModelGroup, activeColorHex);
   }, [activeColorHex]);
 
   useEffect(() => {
@@ -115,26 +118,22 @@ export const MiniCarViewer3D: React.FC<MiniCarViewer3DProps> = ({
     scene.add(rig.root);
     rigRef.current = rig;
 
-    // Load custom .GLB if provided for this vehicle
+    // Load the real .glb for this vehicle (shared cache: not downloaded twice)
+    let alive = true;
     if (customGlbUrl) {
-      const loader = new GLTFLoader();
-      loader.load(customGlbUrl, (gltf) => {
-        const model = gltf.scene;
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        const maxDim = Math.max(size.x, size.y, size.z, 0.001);
-        const scale = 4.2 / maxDim;
-        model.scale.setScalar(scale);
-        model.position.set(-center.x * scale, -box.min.y * scale, -center.z * scale);
-
-        rig.customModelGroup.add(model);
-        rig.customModelGroup.visible = true;
-        rig.bodyShellGroup.visible = false;
-        rig.wheels.forEach((w) => {
-          w.visible = false;
-        });
-      });
+      loadCarModel(customGlbUrl, 4.2)
+        .then((model) => {
+          if (!alive) return;
+          const hex = activeColorRef.current;
+          if (car.repaintGlb || hex.toLowerCase() !== car.colorHex.toLowerCase()) tintCarPaint(model, hex);
+          rig.customModelGroup.add(model);
+          rig.customModelGroup.visible = true;
+          rig.bodyShellGroup.visible = false;
+          rig.wheels.forEach((w) => {
+            w.visible = false;
+          });
+        })
+        .catch((err) => console.warn('Mini viewer: model failed', err));
     }
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -230,6 +229,7 @@ export const MiniCarViewer3D: React.FC<MiniCarViewer3DProps> = ({
     animate();
 
     return () => {
+      alive = false;
       cancelAnimationFrame(frameId);
       controls.dispose();
       envTex.dispose();

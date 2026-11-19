@@ -87,10 +87,10 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
     setSpinFrames([]);
     setSpinPreview(null);
     setVideoWarnings([]);
-    setExtracting({ done: 0, total: 48 });
+    setExtracting({ done: 0, total: 70 });
     try {
       const frames = await extractFrames(file, {
-        count: 48,
+        count: 70,
         onProgress: (done, total) => setExtracting({ done, total }),
         onInfo: ({ width, height, duration }) => {
           const w: string[] = [];
@@ -146,9 +146,9 @@ export const AddListingModal: React.FC<AddListingModalProps> = ({
           await Promise.all(
             spinFrames.slice(start, start + 6).map(async (blob, k) => {
               const i = start + k;
-              const path = `${userId}/${stamp}-spin-${String(i).padStart(3, '0')}.jpg`;
+              const path = `${userId}/${stamp}-spin-${String(i).padStart(3, '0')}.${blob.type === 'image/webp' ? 'webp' : 'jpg'}`;
               const { error: upErr } = await supabase.storage.from(PHOTO_BUCKET).upload(path, blob, {
-                contentType: 'image/jpeg',
+                contentType: blob.type || 'image/jpeg',
               });
               if (upErr) throw upErr;
               urls[i] = supabase.storage.from(PHOTO_BUCKET).getPublicUrl(path).data.publicUrl;

@@ -5,6 +5,7 @@ import { AuthModal } from '../components/AuthModal';
 import { AddListingModal } from '../components/AddListingModal';
 import { Product2DIllustration } from '../components/Product2DIllustration';
 import { SpinViewer } from '../components/SpinViewer';
+import { DeviceScrollStory } from '../components/DeviceScrollStory';
 import {
   ALL_LISTINGS,
   LISTING_CATEGORIES,
@@ -41,6 +42,7 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
   const [showFilters, setShowFilters] = useState(false);
   const [photoListing, setPhotoListing] = useState<Listing | null>(null);
   const [photoIndex, setPhotoIndex] = useState(0);
+  const [storyListing, setStoryListing] = useState<Listing | null>(null);
 
   // ---- Users & listings stored in Supabase ----
   const [dbListings, setDbListings] = useState<Listing[]>([]);
@@ -188,6 +190,8 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
     if (listing.viewer.type === 'photos') {
       setPhotoListing(listing);
       setPhotoIndex(0);
+    } else if (listing.viewer.type === 'scroll-story') {
+      setStoryListing(listing);
     } else {
       onOpenListing(listing);
     }
@@ -455,6 +459,17 @@ export const CatalogPage: React.FC<CatalogPageProps> = ({ lang, currency, onOpen
           )}
         </div>
       </div>
+
+      {/* Own scroll-through window (video frames) */}
+      {storyListing && storyListing.viewer.type === 'scroll-story' && (
+        <DeviceScrollStory
+          frames={storyListing.viewer.frames}
+          mobileFrames={storyListing.viewer.mobileFrames}
+          deviceId={storyListing.viewer.deviceId}
+          lang={lang}
+          onClose={() => setStoryListing(null)}
+        />
+      )}
 
       {/* Simple photo gallery for listings without an 8K view */}
       {photoListing && photoListing.viewer.type === 'photos' && (
